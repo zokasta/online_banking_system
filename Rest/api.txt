@@ -1,0 +1,23 @@
+user level api
+
+/user/login
+/user/create-account
+/user/otp-get
+/user/
+
+
+admin level api
+GET /user
+GET /users
+GET /user/{id}
+POST /user
+PUT /user/{id}
+DELETE /user/{id}
+
+GET /user/account
+GET /user/{id}/account
+POST /user/account
+PUT /user/{id}/account
+DELETE /user/{id}/account
+
+

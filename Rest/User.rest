@@ -1,0 +1,56 @@
+PATCH http://localhost:8000/api/user/update/
+Authorization: Token 71751a90b5c7d34493f8ae124d3e3dd48537a19d
+Content-Type: application/json
+
+{
+    "name":"faiz",
+    "email":"faizrajput1519@gmail.com",
+    "phone":"1234567890"
+}
+
+###
+POST http://localhost:8000/api/send-money/
+Authorization: Token 947ea66f965b639d18ba8a24d710c8ed2ff66c4a
+Content-Type: application/json
+
+{
+    "email":"faizrajput1519@gmail.com",
+    "amount":100,
+    "mpin":"123456"
+}
+
+###
+POST http://127.0.0.1:8000/api/admin-login/
+Content-Type: application/json
+
+{ 
+    "username":"admin",
+    "password":"faiz"
+}
+
+###
+POST http://127.0.0.1:8000/api/forgot-password-request/
+Content-Type: application/json
+
+{ 
+    "username":"admin",
+    "password":"faiz"
+}
+
+
+###
+POST http://127.0.0.1:8000/api/verify-otp-for-forgot-password/
+Content-Type: application/json
+
+{ 
+    "otp":"307623",
+    "username":"admin"
+}
+
+###
+GET http://127.0.0.1:8000/api/users/
+Authorization: Token 947ea66f965b639d18ba8a24d710c8ed2ff66c4a
+Content-Type: application/json
+
+
+

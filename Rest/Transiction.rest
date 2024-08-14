@@ -1,0 +1,16 @@
+GET http://localhost:8000/api/transaction?search=hello
+Authorization: Token 67d3eef46e809918b1e2b702b4a3557307224c91
+Content-Type: application/json
+
+{
+    "search":"2025"
+}
+
+###
+
+GET http://127.0.0.1:8000/api/admin/transaction/all?time=year
+Authorization: Token 49a0f458c87f0eff52aab6c97591d78dd96f6545
+Content-Type: application/json
+
+
+
