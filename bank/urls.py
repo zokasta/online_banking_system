@@ -29,7 +29,7 @@ urlpatterns = [
     
     path('admin/user-statistics/', admin_dashboard_card.user_growth ,name='user_statistics'),
     path('admin/transaction/all/', transaction_views.transaction_count ,name='transaction_count'),
-    # path('admin/user/<int:user_id>/', user_views.user_update_by_admin, name='user_update_by_admin')
+    path('admin/user/<int:user_id>/', user_views.user_update_by_admin, name='user_update_by_admin')
 
     
 ]

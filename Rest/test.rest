@@ -22,10 +22,10 @@ Content-Type: application/json
 
 {
     "name":"faiz",
-    "email":"faizrajput1519@gmail.com",
-    "password":"faiz",
-    "username":"faiz",
-    "phone":"1234522790",
+    "email":"faizrajput1510@gmail.com",
+    "password":"admin",
+    "username":"admin",
+    "phone":"1234522799",
     "pan_card":"1256389011",
     "aadhar_card":"1634567890123456",
     "dob":"2024-5-14",

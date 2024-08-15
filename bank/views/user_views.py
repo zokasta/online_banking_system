@@ -136,32 +136,32 @@ def delete_user(request, user_id):
 
 
 
-# @api_view(['PATCH'])
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated])
-# def user_update_by_admin(request, user_id):
-#     if request.user.type != 'admin':
-#         return Response({'error': 'You do not have permission to access this resource.'}, status=status.HTTP_403_FORBIDDEN)
-#     user = get_object_or_404(User, id=user_id)
+@api_view(['PATCH'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def user_update_by_admin(request, user_id):
+    # if request.user.type != 'admin':
+    #     return Response({'error': 'You do not have permission to access this resource.'})
+    user = get_object_or_404(User, id=user_id)
     
-#     # Only allow updating of specific fields
-#     allowed_fields = {'name', 'phone', 'email'}
-#     data = {field: value for field, value in request.data.items() if field in allowed_fields}
+    # Only allow updating of specific fields
+    allowed_fields = {'name', 'phone', 'email'}
+    data = {field: value for field, value in request.data.items() if field in allowed_fields}
 
-#     # Update the user's information
-#     serializer = UserSerializer(user, data=data, partial=True)
+    # Update the user's information
+    serializer = UserSerializer(user, data=data, partial=True)
     
-#     if serializer.is_valid():
-#         serializer.save()
-#         return Response({
-#             'status': True,
-#             'user': serializer.data
-#         }, status=status.HTTP_200_OK)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({
+            'status': True,
+            'user': serializer.data
+        }, status=status.HTTP_200_OK)
     
-#     errors = {f"{field} field": next(iter(errors)) for field, errors in serializer.errors.items()}
-#     return Response({
-#         'status': False,
-#         'message': list(errors.values())[0]
-#     }, status=status.HTTP_400_BAD_REQUEST)
+    errors = {f"{field} field": next(iter(errors)) for field, errors in serializer.errors.items()}
+    return Response({
+        'status': False,
+        'message': list(errors.values())[0]
+    })
 
 
