@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-=yd=k^0%5pqj8cgg$#w!gc@t30k@pb)dd#eu^c1zv!v%(a^^vp
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -136,7 +136,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "https://8bc3-2409-40c1-503a-9346-60df-7150-2f5-1eb0.ngrok-free.app",
 ]
+CORS_ALLOW_ALL_ORIGINS = True
+
 
 CORS_ORIGIN_ALLOW_ALL = True
 
@@ -163,6 +166,7 @@ CORS_ALLOW_HEADERS = (
     "user-agent",
     "x-csrftoken",
     "x-requested-with",
+    'ngrok-skip-browser-warning',
 )
 
 
@@ -174,3 +178,13 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'aoiai1510@gmail.com'
 EMAIL_HOST_PASSWORD = 'kmkxuncusgnalwer'
+
+
+
+TWILIO_RECOVERY_CODE = 'LWRS8DE8ARWCUECMS1P5V837'
+
+ACCOUNT_SID='ACbbde116065566edb5124b4d7e23a8adc'
+AUTH_TOKEN='dabc53f635cdcd0c4dba7592e2af8474'
+COUNTRY_CODE='+91'
+TWILIO_WHATSAPP_NUMBER='+12513179627'
+TWILIO_PHONE_NUMBER='+12513179627'

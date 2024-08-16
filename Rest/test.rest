@@ -2,7 +2,7 @@ POST http://127.0.0.1:8000/api/login/
 Content-Type: application/json
 
 { 
-    "username":"admin1",
+    "username":"faiz",
     "password":"faiz"
 }
 
@@ -13,7 +13,7 @@ Content-Type: application/json
 
 {
     "username":"faiz",
-    "otp":"244053"
+    "otp":"243366"
 }
 
 ###

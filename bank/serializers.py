@@ -4,7 +4,7 @@ from bank.models import User, Account, Transaction
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id','name', 'username', 'email', 'phone', 'password', 'pan_card', 'aadhar_card', 'dob', 'type','mpin']
+        fields = ['id','name', 'username', 'email', 'phone', 'password', 'pan_card', 'aadhar_card', 'dob', 'type','mpin','is_ban']
         extra_kwargs = {'password': {'write_only': True},'mpin': {'write_only': True}}
 
     def create(self, validated_data):

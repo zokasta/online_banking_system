@@ -7,6 +7,7 @@ from bank.serializers import UserSerializer, AccountSerializer
 from bank.models import User, Account
 from bank.utils import generate_otp, send_otp_email
 from rest_framework import status
+from ..Massage import MessageHandler
 import random
 
 
@@ -75,6 +76,7 @@ def login(request):
     user.otp = otp
     user.save()
 
+    # messagehandler=MessageHandler(user.phone,otp).send_otp_via_message()
     # send_otp_email(user.email, otp)
 
     return Response({

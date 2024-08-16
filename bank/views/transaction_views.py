@@ -103,7 +103,7 @@ def transaction_history(request):
         transactions_dict[transaction.pk] = {
             "transaction": transaction,
             # Set status as 'Debit' if user is the sender
-            "status_info": 'Debit' if transaction.sender_id == request.user.id else 'Credit'
+            "status_info": 'Debit'
         }
 
     # Add received transactions, checking for duplicates
@@ -112,24 +112,25 @@ def transaction_history(request):
             transactions_dict[transaction.pk] = {
                 "transaction": transaction,
                 # Set status as 'Credit' if user is the receiver
-                "status_info": 'Credit' if transaction.receiver_id == request.user.id else 'Debit'
+                "status_info": 'Credit'
             }
         else:
             # If already present, we can assume the status was set correctly in the sent transactions loop
             transactions_dict[transaction.pk]["status_info"] = 'Self Transfer'
-        transactions = list(transactions_dict.values())
 
-        # Sort by timestamp
-        transactions.sort(key=lambda t: t["transaction"].created_at, reverse=True)
+    # Convert the dictionary to a list of transactions
+    transactions = list(transactions_dict.values())
 
-        user = request.user
-    
+    # Sort by timestamp
+    transactions.sort(key=lambda t: t["transaction"].created_at, reverse=True)
+
     # Filter transactions based on the search term
     filtered_transactions = []
     for idx, trans_dict in enumerate(transactions, start=1):
         transaction = trans_dict["transaction"]
         status_info = trans_dict["status_info"]
 
+        # Determine the name of the other party
         if transaction.sender == account:
             name = transaction.receiver.user.name
         else:
@@ -138,8 +139,8 @@ def transaction_history(request):
         # Format timestamp
         formatted_timestamp = transaction.created_at.strftime('%d %b %Y, %H:%M:%S')
 
-        # Check if search matches name or timestamp
-        if (search.lower() in name.lower()) or (search in formatted_timestamp):
+        # Check if search term matches name or formatted timestamp
+        if search.lower() in name.lower() or search in formatted_timestamp:
             filtered_transactions.append({
                 "index": idx,
                 "name": name,
@@ -181,7 +182,6 @@ def show_transaction(request):
     # Serialize the transaction data
     serializer = TransactionSerializer(transactions, many=True)
 
-    # Return the response
     return Response({
         "status": True,
         "transactions": serializer.data
