@@ -231,3 +231,70 @@ def transaction_count(request):
             "count": total_sum
         }
     }, status=status.HTTP_200_OK)
+
+
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def admin_transaction_history(request):
+    search = request.query_params.get('search', '').strip()
+
+    # Fetch all transactions
+    transactions = Transaction.objects.all()
+
+    # Filter transactions based on search term
+    if search:
+        transactions = transactions.filter(
+            sender__user__name__icontains=search) | transactions.filter(
+            receiver__user__name__icontains=search) | transactions.filter(
+            amount__icontains=search) | transactions.filter(
+            created_at__icontains=search)
+
+    # Sort transactions by created_at timestamp
+    transactions = transactions.order_by('-created_at')
+
+    # Prepare response data
+    transaction_history = []
+    for idx, transaction in enumerate(transactions, start=1):
+        sender_name = transaction.sender.user.name
+        receiver_name = transaction.receiver.user.name
+        amount = transaction.amount
+        formatted_date = transaction.created_at.strftime('%d %b %Y, %H:%M:%S')
+
+        transaction_history.append({
+            "id": transaction.id,  # Include transaction ID
+            "index": idx,
+            "sender_name": sender_name,
+            "amount": amount,
+            "receiver_name": receiver_name,
+            "date": formatted_date,
+        })
+
+    return Response({
+        "status": True,
+        "transactions": transaction_history
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['DELETE'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def admin_transaction_delete(request, transaction_id):
+    # Fetch the transaction by its ID
+    transaction = get_object_or_404(Transaction, id=transaction_id)
+
+    # Delete the transaction
+    transaction.delete()
+
+    return Response({
+        "status": True,
+        "message": "Transaction deleted successfully"
+    }, status=status.HTTP_200_OK)
+
+
+
+
+
+

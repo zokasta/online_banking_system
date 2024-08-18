@@ -45,7 +45,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
 
 
     is_active = models.BooleanField(default=True)
@@ -79,7 +78,6 @@ class Account(models.Model):
     )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f'Account {self.account_number} of user {self.user.email}'
@@ -100,7 +98,6 @@ class Transaction(models.Model):
         default=TransactionType.CREDIT_CARD,
     )
     updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f'Transaction from {self.sender.user.email} to {self.receiver.user.email} for {self.amount}'
@@ -139,7 +136,6 @@ class CreditCard(models.Model):
     limit_use = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f'Credit Card {self.card_number} for User {self.user.email}'
@@ -162,7 +158,6 @@ class Report(models.Model):
     custom_name = models.CharField(max_length=20, null=False)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True, null=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f'Report by {self.user.username} with status {self.status}'

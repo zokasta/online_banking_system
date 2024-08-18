@@ -37,7 +37,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transaction
-        fields = ['sender', 'receiver', 'amount', 'created_at', 'updated_at', 'date', 'status', 'sender_name', 'receiver_name']
+        fields = ['sender', 'receiver', 'amount', 'created_at', 'updated_at', 'date', 'status', 'sender_name', 'receiver_name','id']
         read_only_fields = ['created_at', 'updated_at']
 
     def get_date(self, obj):

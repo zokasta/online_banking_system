@@ -5,6 +5,7 @@ from bank.views import auth_views
 from bank.views import transaction_views
 from bank.views import user_views
 from bank.views.Admin import admin_dashboard_card
+from bank.views import account_views
 
 urlpatterns = [
     path('login/', auth_views.login, name='login'),
@@ -29,7 +30,18 @@ urlpatterns = [
     
     path('admin/user-statistics/', admin_dashboard_card.user_growth ,name='user_statistics'),
     path('admin/transaction/all/', transaction_views.transaction_count ,name='transaction_count'),
-    path('admin/user/<int:user_id>/', user_views.user_update_by_admin, name='user_update_by_admin')
+    path('admin/user/<int:user_id>/', user_views.user_update_by_admin, name='user_update_by_admin'),
+    path('admin/transaction/', transaction_views.admin_transaction_history, name='admin_transaction_history'),
+    path('admin/transaction/<int:transaction_id>/', transaction_views.admin_transaction_delete, name='admin_transaction_delete'),
+    path('admin/account/', account_views.admin_account_list, name='admin_account_list'),
+    path('admin/account/<int:account_id>/', account_views.admin_account_delete, name='admin_account_delete'),
+    path('admin/account/edit/<int:account_id>/', account_views.admin_account_edit, name='admin_account_edit'),
+
+    
+    
+    
+
+
 
     
 ]

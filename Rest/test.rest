@@ -13,7 +13,7 @@ Content-Type: application/json
 
 {
     "username":"faiz",
-    "otp":"243366"
+    "otp":"738361"
 }
 
 ###
@@ -22,10 +22,10 @@ Content-Type: application/json
 
 {
     "name":"faiz",
-    "email":"faizrajput1510@gmail.com",
+    "email":"faizrajput1510@outlook.com",
     "password":"admin",
-    "username":"admin",
-    "phone":"1234522799",
+    "username":"admin1",
+    "phone":"1234522199",
     "pan_card":"1256389011",
     "aadhar_card":"1634567890123456",
     "dob":"2024-5-14",
