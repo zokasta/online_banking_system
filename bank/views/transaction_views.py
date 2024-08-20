@@ -10,6 +10,7 @@ from rest_framework import status
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import timedelta
+from .functions import get_time_range,get_six_month_transaction
 
 
 
@@ -278,6 +279,7 @@ def admin_transaction_history(request):
     }, status=status.HTTP_200_OK)
 
 
+
 @api_view(['DELETE'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -293,6 +295,64 @@ def admin_transaction_delete(request, transaction_id):
         "message": "Transaction deleted successfully"
     }, status=status.HTTP_200_OK)
 
+
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def transaction_growth(request, period):
+    try:
+        current_start, previous_start = get_time_range(period)
+        now = timezone.now()
+
+        current_period_amount = Transaction.objects.filter(created_at__range=(current_start, now)).aggregate(Sum('amount'))['amount__sum'] or 0
+        previous_period_amount = Transaction.objects.filter(created_at__range=(previous_start, current_start)).aggregate(Sum('amount'))['amount__sum'] or 0
+
+        if previous_period_amount == 0:
+            growth_percentage = 100.0 if current_period_amount > 0 else 0.0
+        else:
+            growth_percentage = ((current_period_amount - previous_period_amount) / previous_period_amount) * 100
+
+        growth_percentage = f"{growth_percentage:.2f}"
+        return Response({
+            'status': True,
+            'current': current_period_amount,
+            'previous': previous_period_amount,
+            'growth': growth_percentage
+        }, status=status.HTTP_200_OK)
+
+    except ValueError as e:
+        return Response({
+            'status': False,
+            'message': str(e)
+        }, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({
+            'status': False,
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def transaction_monthly_summary(request):
+    try:
+        month_names, transaction_sums = get_six_month_transaction()
+
+        return Response({
+            'status': True,
+            'y-axis': month_names,
+            'x-axis': transaction_sums,
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            'status': False,
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 

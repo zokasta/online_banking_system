@@ -28,7 +28,11 @@ urlpatterns = [
     path('user/account/show/', transaction_views.create_transaction, name='create_transaction'),
 
     
-    path('admin/user-statistics/', admin_dashboard_card.user_growth ,name='user_statistics'),
+    path('admin/user-statistics/<str:period>', admin_dashboard_card.user_growth ,name='user_statistics'),
+    path('admin/transaction-statistics/<str:period>', transaction_views.transaction_growth ,name='total_transaction_amount'),
+    path('admin/transaction-monthly-summary/', transaction_views.transaction_monthly_summary ,name='transaction_monthly_summary'),
+    
+    
     path('admin/transaction/all/', transaction_views.transaction_count ,name='transaction_count'),
     path('admin/user/<int:user_id>/', user_views.user_update_by_admin, name='user_update_by_admin'),
     path('admin/transaction/', transaction_views.admin_transaction_history, name='admin_transaction_history'),

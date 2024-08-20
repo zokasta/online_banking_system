@@ -1,36 +1,17 @@
-from django.utils import timezone
+from django.utils import timezone 
 from django.db.models import Count
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from bank.models import User
 from rest_framework import status
-
-def get_time_range(period):
-    now = timezone.now()
-
-    if period == 'day':
-        current_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        previous_start = current_start - timezone.timedelta(days=1)
-    elif period == 'week':
-        current_start = now - timezone.timedelta(days=now.weekday())
-        previous_start = current_start - timezone.timedelta(weeks=1)
-    elif period == 'month':
-        current_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        previous_month = current_start - timezone.timedelta(days=1)
-        previous_start = previous_month.replace(day=1)
-    elif period == 'year':
-        current_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-        previous_year = current_start - timezone.timedelta(days=1)
-        previous_start = previous_year.replace(month=1, day=1)
-    elif period == 'all':
-        current_start = timezone.datetime.min.replace(tzinfo=timezone.utc)
-        previous_start = current_start
-    else:
-        raise ValueError("Invalid time period")
-
-    return current_start, previous_start
+from ..functions import get_time_range
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
 
 @api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 def user_growth(request, period):
     try:
         current_start, previous_start = get_time_range(period)
@@ -46,9 +27,9 @@ def user_growth(request, period):
 
         return Response({
             'status': True,
-            'current_period_users': current_period_users,
-            'previous_period_users': previous_period_users,
-            'growth_percentage': growth_percentage
+            'current': current_period_users,
+            'previous': previous_period_users,
+            'growth': growth_percentage
         }, status=status.HTTP_200_OK)
 
     except ValueError as e:

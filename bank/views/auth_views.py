@@ -8,6 +8,7 @@ from bank.models import User, Account
 from bank.utils import generate_otp, send_otp_email
 from rest_framework import status
 from ..Massage import MessageHandler
+from .functions import generate_expiration_date, generate_cvv
 import random
 
 
@@ -28,8 +29,8 @@ def signup(request):
         # Additional account creation logic
         account_number = int(user.phone)
         debit_card = generate_card_number()
-        expiration_date = "12/25"  # Or generate dynamically
-        cvv = '123'  # Or generate dynamically
+        expiration_date =generate_expiration_date()
+        cvv = generate_cvv()
 
         account = Account.objects.create(
             user=user,
