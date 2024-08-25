@@ -22,3 +22,5 @@ class MessageHandler:
             from_=f'{settings.TWILIO_WHATSAPP_NUMBER}',
             to=f'whatsapp:{settings.COUNTRY_CODE}{self.phone_number}'
         )
+
+

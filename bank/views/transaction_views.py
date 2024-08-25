@@ -140,8 +140,13 @@ def transaction_history(request):
         # Format timestamp
         formatted_timestamp = transaction.created_at.strftime('%d %b %Y, %H:%M:%S')
 
-        # Check if search term matches name or formatted timestamp
-        if search.lower() in name.lower() or search in formatted_timestamp:
+        # Check if search term matches name, timestamp, amount, or status
+        if (
+            search.lower() in name.lower() or
+            search in formatted_timestamp or
+            search in status_info.lower() or
+            search in str(transaction.amount)
+        ):
             filtered_transactions.append({
                 "index": idx,
                 "name": name,
@@ -154,7 +159,6 @@ def transaction_history(request):
         "status": True,
         "transactions": filtered_transactions
     }, status=status.HTTP_200_OK)
-
 
 
 @api_view(['POST'])

@@ -1,4 +1,5 @@
 import uuid
+import re
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -22,7 +23,25 @@ def generate_card_number():
 @api_view(['POST'])
 def signup(request):
     # return Response({request})
+    pan_regex = r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$'
+    aadhar_regex = r'^\d{12}$'
+    
+    pan_card = request.data.get('pan_card', '').strip().upper()
+    aadhar_card = request.data.get('aadhar_card', '').strip()
+    if not re.match(pan_regex, pan_card):
+        return Response({
+            'status': False,
+            'message': 'Invalid PAN card number. Please enter a valid PAN.'
+        })
+    
+    if not re.match(aadhar_regex, aadhar_card):
+        return Response({
+            'status': False,
+            'message': 'Invalid Aadhar card number. Please enter a valid 12-digit Aadhar number.'
+        })
+
     serializer = UserSerializer(data=request.data)
+    
     if serializer.is_valid():
         user = serializer.save()
 
@@ -73,6 +92,11 @@ def login(request):
             "message": "Username or password is wrong"
         })
 
+    if not user.type == 'user':
+        return Response({
+            'status': False,
+            'message': "You don't have permission to login"
+        }) 
     otp = generate_otp()
     user.otp = otp
     user.save()
