@@ -4,6 +4,20 @@ from django.utils import timezone
 from django.conf import settings
 from django.core.validators import RegexValidator
 
+
+class State(models.Model):
+    name = models.CharField(max_length=50)
+    def __str__(self):
+        return f"Report by {self.name}"
+
+
+class City(models.Model):
+    name = models.CharField(max_length=50)
+    state = models.ForeignKey(State, on_delete=models.CASCADE)
+    def __str__(self):
+        return f"Report by {self.name}"
+
+
 class UserManager(BaseUserManager):
     def create_user(self, email, username, password=None, **extra_fields):
         if not email:
@@ -13,6 +27,7 @@ class UserManager(BaseUserManager):
         user.set_password(password)
         user.save(using=self._db)
         return user
+
 
     def create_superuser(self, email, username, password=None, **extra_fields):
         # extra_fields.setdefault('is_staff', True)
@@ -33,19 +48,21 @@ class User(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=50, unique=True)
     email = models.EmailField(unique=True, max_length=100)
     phone = models.CharField(max_length=20, unique=True)
+    city = models.ForeignKey(City, on_delete=models.CASCADE)
     pan_card = models.CharField(max_length=10)
     aadhar_card = models.CharField(max_length=16)
     dob = models.DateField()
     mpin = models.CharField(max_length=6)
     type = models.CharField(max_length=20, choices=(('user', 'user'), ('admin', 'admin')))
     reset_token = models.TextField(null=True)
+    
+    gender = models.CharField(max_length=10, choices=(('male', 'Male'), ('female', 'Female'), ('other', 'Other')))
 
     otp = models.CharField(max_length=6, blank=True, null=True)
     otp_generated_at = models.DateTimeField(blank=True, null=True)
 
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-
 
     is_active = models.BooleanField(default=True)
     is_ban = models.BooleanField(default=False)
@@ -161,3 +178,4 @@ class Report(models.Model):
 
     def __str__(self):
         return f'Report by {self.user.username} with status {self.status}'
+

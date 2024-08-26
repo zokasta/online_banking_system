@@ -1,5 +1,17 @@
 from rest_framework import serializers
-from bank.models import User, Account, Transaction 
+from bank.models import User, Account, Transaction , City, State
+
+
+
+class StateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = State
+        fields = ['id', 'name']
+
+class CitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = City
+        fields = ['id', 'name', 'state']
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

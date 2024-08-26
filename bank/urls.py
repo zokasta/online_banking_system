@@ -6,6 +6,7 @@ from bank.views import transaction_views
 from bank.views import user_views
 from bank.views.Admin import admin_dashboard_card
 from bank.views import account_views
+from bank.views import city_state
 
 urlpatterns = [
     path('login/', auth_views.login, name='login'),
@@ -45,7 +46,12 @@ urlpatterns = [
     
     
 
-
+    # City and state system
+    path('states/', city_state.state_list_create, name='state-list-create'),
+    path('states/<int:id>/', city_state.state_detail, name='state-detail'),
+    path('cities/', city_state.city_list_create, name='city-list-create'),
+    path('cities/<int:id>/', city_state.city_detail, name='city-detail'),
+    path('states/<int:state_id>/cities/', city_state.cities_by_state, name='city-list-by-state-id'),
 
     
 ]

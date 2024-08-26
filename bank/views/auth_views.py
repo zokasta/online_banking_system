@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from bank.serializers import UserSerializer, AccountSerializer
-from bank.models import User, Account
+from bank.models import User, Account, CreditCard
 from bank.utils import generate_otp, send_otp_email
 from rest_framework import status
 from ..Massage import MessageHandler
@@ -146,7 +146,6 @@ def adminLogin(request):
     }, status=status.HTTP_200_OK)
 
 
-
 @api_view(['POST'])
 def verify_otp(request):
     user = get_object_or_404(User, username=request.data['username'])
@@ -165,20 +164,31 @@ def verify_otp(request):
         # Query and serialize the associated account
         account = get_object_or_404(Account, user=user)
         account_serializer = AccountSerializer(account)
+        
+        # Fetch credit card details if any
+        credit_card = CreditCard.objects.filter(user_id=user.id).first()
 
-        return Response({
+        response_data = {
             'status': True,
             'token': token.key,
             'user': user_serializer.data,
-            'account': account_serializer.data
-        }, status=status.HTTP_200_OK)
+            'account': account_serializer.data,
+            'credit_card': False  # Default to False if no credit card is found
+        }
+
+        if credit_card:
+            response_data["credit_card"] = {
+                "card_number": credit_card.card_number,  # Adjust fields based on your CreditCard model
+                "expiry_date": credit_card.expiry_date,
+                # Add more fields as needed
+            }
+
+        return Response(response_data, status=status.HTTP_200_OK)
     else:
         return Response({
             "status": False,
             "message": "OTP is incorrect"
         }, status=status.HTTP_200_OK)
-
-
 
 @api_view(['POST'])
 def send_otp_for_forgot_password(request):
