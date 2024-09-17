@@ -8,7 +8,7 @@ def state_list_create(request):
     if request.method == 'GET':
         states = State.objects.all()
         serializer = StateSerializer(states, many=True)
-        return Response(serializer.data)
+        return Response({'status':True,"data":serializer.data,'message':"This is message"})
 
     elif request.method == 'POST':
         serializer = StateSerializer(data=request.data)

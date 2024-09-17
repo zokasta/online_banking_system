@@ -16,7 +16,7 @@ class CitySerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id','name', 'username', 'email', 'phone', 'password', 'pan_card', 'aadhar_card', 'dob', 'type','mpin','is_ban']
+        fields = ['id','name', 'username', 'email', 'phone', 'password', 'pan_card', 'aadhar_card', 'dob', 'type','mpin','is_ban','city']
         extra_kwargs = {'password': {'write_only': True},'mpin': {'write_only': True}}
 
     def create(self, validated_data):
@@ -29,7 +29,8 @@ class UserSerializer(serializers.ModelSerializer):
             aadhar_card=validated_data['aadhar_card'],
             dob=validated_data['dob'],
             type=validated_data['type'],
-            mpin=validated_data['mpin']
+            mpin=validated_data['mpin'],
+            city_id = validated_data.pop('city_id',None),
         )
         user.set_password(validated_data['password'])
         user.save()

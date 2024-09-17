@@ -73,7 +73,7 @@ def signup(request):
             'message': 'OTP has been sent to your email',
             'user': serializer.data,
             'account': account_serializer.data
-        }, status=status.HTTP_201_CREATED)
+        })
 
     errors = {f"{field} field is required": next(iter(errors)) for field, errors in serializer.errors.items()}
     return Response({

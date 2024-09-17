@@ -1,12 +1,12 @@
 # urls.py
 
 from django.urls import path
-from bank.views import auth_views
-from bank.views import transaction_views
-from bank.views import user_views
-from bank.views.Admin import admin_dashboard_card
-from bank.views import account_views
-from bank.views import city_state
+from .views import auth_views
+from .views import transaction_views
+from .views import user_views
+from .views.Admin import admin_dashboard_card
+from .views import account_views
+from .views import city_state
 
 urlpatterns = [
     path('login/', auth_views.login, name='login'),
@@ -32,6 +32,13 @@ urlpatterns = [
     path('admin/user-statistics/<str:period>', admin_dashboard_card.user_growth ,name='user_statistics'),
     path('admin/transaction-statistics/<str:period>', transaction_views.transaction_growth ,name='total_transaction_amount'),
     path('admin/transaction-monthly-summary/', transaction_views.transaction_monthly_summary ,name='transaction_monthly_summary'),
+    
+    
+    path('admin/transaction-statistics-self-debit-card/<str:period>', transaction_views.debit_card_transaction_count ,name='total_transaction_amount'),
+    path('admin/transaction-statistics-self-credit-card/<str:period>', transaction_views.credit_card_transaction_count ,name='total_transaction_amount'),
+    # path('admin/transaction-monthly-summary-self/', transaction_views.transaction_monthly_summary ,name='transaction_monthly_summary'),
+    
+    
     
     
     path('admin/transaction/all/', transaction_views.transaction_count ,name='transaction_count'),

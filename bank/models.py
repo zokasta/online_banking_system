@@ -48,7 +48,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=50, unique=True)
     email = models.EmailField(unique=True, max_length=100)
     phone = models.CharField(max_length=20, unique=True)
-    city = models.ForeignKey(City, on_delete=models.CASCADE)
+    city = models.ForeignKey(City, on_delete=models.CASCADE, null=True)
     pan_card = models.CharField(max_length=10)
     aadhar_card = models.CharField(max_length=16)
     dob = models.DateField()

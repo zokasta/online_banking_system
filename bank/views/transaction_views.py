@@ -4,8 +4,8 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction as db_transaction
-from bank.models import Account, Transaction, User
-from bank.serializers import TransactionSerializer, AccountSerializer
+from ..models import Account, Transaction, User
+from ..serializers import TransactionSerializer, AccountSerializer
 from rest_framework import status
 from django.db.models import Sum
 from django.utils import timezone
@@ -359,6 +359,40 @@ def transaction_monthly_summary(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def credit_card_transaction_count(request):
+    user = request.user
+    
+    # Filter transactions where the user is the sender or receiver and type is 'credit'
+    sent_transactions = Transaction.objects.filter(sender_id=user, type='credit')
+    received_transactions = Transaction.objects.filter(receiver_id=user, type='credit')
+
+    # Get the count of unique transactions
+    transaction_count = len(set(list(sent_transactions) + list(received_transactions)))
+
+    return Response({
+        "status": True,
+        "credit_card_transaction_count": transaction_count
+    }, status=status.HTTP_200_OK)
 
 
 
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def debit_card_transaction_count(request):
+    user = request.user
+
+    # Filter transactions where the user is the sender or receiver and type is 'debit'
+    sent_transactions = Transaction.objects.filter(sender=user, type='debit')
+    received_transactions = Transaction.objects.filter(receiver=user, type='debit')
+
+    # Get the count of unique transactions
+    transaction_count = len(set(list(sent_transactions) + list(received_transactions)))
+
+    return Response({
+        "status": True,
+        "debit_card_transaction_count": transaction_count
+    }, status=status.HTTP_200_OK)
