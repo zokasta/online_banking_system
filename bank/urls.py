@@ -34,8 +34,8 @@ urlpatterns = [
     path('admin/transaction-monthly-summary/', transaction_views.transaction_monthly_summary ,name='transaction_monthly_summary'),
     
     
-    path('admin/transaction-statistics-self-debit-card/<str:period>', transaction_views.debit_card_transaction_count ,name='total_transaction_amount'),
-    path('admin/transaction-statistics-self-credit-card/<str:period>', transaction_views.credit_card_transaction_count ,name='total_transaction_amount'),
+    path('admin/transaction-statistics-self-debit-card/<str:period>/', transaction_views.debit_card_transaction_sum ,name='total_transaction_amount'),
+    path('admin/transaction-statistics-self-credit-card/<str:period>/', transaction_views.credit_card_transaction_count ,name='total_transaction_amount'),
     # path('admin/transaction-monthly-summary-self/', transaction_views.transaction_monthly_summary ,name='transaction_monthly_summary'),
     
     

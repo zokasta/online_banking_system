@@ -6,14 +6,15 @@ Content-Type: application/json
     "password":"faiz"
 }
 
+
 ###
 
 POST http://127.0.0.1:8000/api/verify_otp/
 Content-Type: application/json
 
 {
-    "username":"faiz",
-    "otp":"139482"
+    "username":"fafa",
+    "otp":"153917"
 }
 
 ###
@@ -26,16 +27,16 @@ Content-Type: application/json
     "password":"admin",
     "username":"fafa",
     "phone":"1234522199",
-    "pan_card":"1256389011",
-    "aadhar_card":"1634567890123456",
+    "pan_card":"gjgpr2313k",
+    "aadhar_card":"123456789012",
     "dob":"2024-5-14",
     "mpin":"123456",
     "type":"user"
 }
 
 ###
-POST http://127.0.0.1:8000/api/send-money/
-Authorization: Token 71751a90b5c7d34493f8ae124d3e3dd48537a19d
+POST http://127.0.0.1:8000/api/admin/transaction-statistics-self-debit-card/day/
+Authorization: Token f7263bebd2b10da648603d87509183c7a980a6a1
 Content-Type: application/json
 
 {

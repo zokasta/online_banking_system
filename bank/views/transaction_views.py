@@ -161,6 +161,8 @@ def transaction_history(request):
     }, status=status.HTTP_200_OK)
 
 
+
+
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -359,40 +361,126 @@ def transaction_monthly_summary(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
-def credit_card_transaction_count(request):
-    user = request.user
-    
-    # Filter transactions where the user is the sender or receiver and type is 'credit'
-    sent_transactions = Transaction.objects.filter(sender_id=user, type='credit')
-    received_transactions = Transaction.objects.filter(receiver_id=user, type='credit')
-
-    # Get the count of unique transactions
-    transaction_count = len(set(list(sent_transactions) + list(received_transactions)))
-
-    return Response({
-        "status": True,
-        "credit_card_transaction_count": transaction_count
-    }, status=status.HTTP_200_OK)
-
-
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-def debit_card_transaction_count(request):
-    user = request.user
+def debit_card_transaction_sum(request, period):
+    now = timezone.now()
 
-    # Filter transactions where the user is the sender or receiver and type is 'debit'
-    sent_transactions = Transaction.objects.filter(sender=user, type='debit')
-    received_transactions = Transaction.objects.filter(receiver=user, type='debit')
+    def get_sum_and_previous_sum(period):
+        if period == 'day':
+            start_date = now - timedelta(days=1)
+            previous_start_date = now - timedelta(days=2)
+        elif period == 'week':
+            start_date = now - timedelta(weeks=1)
+            previous_start_date = now - timedelta(weeks=2)
+        elif period == 'month':
+            start_date = now - timedelta(weeks=4)  # Approximate month as 4 weeks
+            previous_start_date = now - timedelta(weeks=8)  # Approximate previous month as 8 weeks
+        elif period == 'year':
+            start_date = now - timedelta(days=365)
+            previous_start_date = now - timedelta(days=730)  # Approximate previous year as 730 days
+        elif period == 'all':
+            start_date = None
+            previous_start_date = None
+        else:
+            return None, None
 
-    # Get the count of unique transactions
-    transaction_count = len(set(list(sent_transactions) + list(received_transactions)))
+        # Filter transactions based on the start_date and type (debit card)
+        if start_date:
+            current_transactions = Transaction.objects.filter(created_at__gte=start_date, type=Transaction.TransactionType.DEBIT_CARD)
+            previous_transactions = Transaction.objects.filter(created_at__gte=previous_start_date, created_at__lt=start_date, type=Transaction.TransactionType.DEBIT_CARD)
+        else:
+            current_transactions = Transaction.objects.filter(type=Transaction.TransactionType.DEBIT_CARD)
+            previous_transactions = Transaction.objects.none()  # No previous data if period is 'all'
+
+        current_sum = current_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
+        previous_sum = previous_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
+
+        return current_sum, previous_sum
+
+    current_sum, previous_sum = get_sum_and_previous_sum(period)
+
+    if current_sum is None:
+        return Response({
+            "status": False,
+            "message": "Invalid time period. Choose from 'day', 'week', 'month', 'year', 'all'."
+        }, status=400)
+
+    # Calculate growth percentage
+    if previous_sum == 0:
+        growth_percentage = 0 if current_sum == 0 else 100
+    else:
+        growth_percentage = ((current_sum - previous_sum) / previous_sum) * 100
 
     return Response({
         "status": True,
-        "debit_card_transaction_count": transaction_count
-    }, status=status.HTTP_200_OK)
+        "data": {
+            "current": current_sum,
+            "previous": previous_sum,
+            "growth": growth_percentage
+        }
+    }, status=200)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def credit_card_transaction_count(request, period):
+    now = timezone.now()
+
+    def get_sum_and_previous_sum(period):
+        if period == 'day':
+            start_date = now - timedelta(days=1)
+            previous_start_date = now - timedelta(days=2)
+        elif period == 'week':
+            start_date = now - timedelta(weeks=1)
+            previous_start_date = now - timedelta(weeks=2)
+        elif period == 'month':
+            start_date = now - timedelta(weeks=4)  # Approximate month as 4 weeks
+            previous_start_date = now - timedelta(weeks=8)  # Approximate previous month as 8 weeks
+        elif period == 'year':
+            start_date = now - timedelta(days=365)
+            previous_start_date = now - timedelta(days=730)  # Approximate previous year as 730 days
+        elif period == 'all':
+            start_date = None
+            previous_start_date = None
+        else:
+            return None, None
+
+        # Filter transactions based on the start_date and type (credit card)
+        if start_date:
+            current_transactions = Transaction.objects.filter(created_at__gte=start_date, type=Transaction.TransactionType.CREDIT_CARD)
+            previous_transactions = Transaction.objects.filter(created_at__gte=previous_start_date, created_at__lt=start_date, type=Transaction.TransactionType.CREDIT_CARD)
+        else:
+            current_transactions = Transaction.objects.filter(type=Transaction.TransactionType.CREDIT_CARD)
+            previous_transactions = Transaction.objects.none()  # No previous data if period is 'all'
+
+        current_sum = current_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
+        previous_sum = previous_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
+
+        return current_sum, previous_sum
+
+    current_sum, previous_sum = get_sum_and_previous_sum(period)
+
+    if current_sum is None:
+        return Response({
+            "status": False,
+            "message": "Invalid time period. Choose from 'day', 'week', 'month', 'year', 'all'."
+        }, status=400)
+
+    # Calculate growth percentage
+    if previous_sum == 0:
+        growth_percentage = 0 if current_sum == 0 else 100
+    else:
+        growth_percentage = ((current_sum - previous_sum) / previous_sum) * 100
+
+    return Response({
+        "status": True,
+        "data": {
+            "current": current_sum,
+            "previous_sum": previous_sum,
+            "growth": growth_percentage
+        }
+    }, status=200)
