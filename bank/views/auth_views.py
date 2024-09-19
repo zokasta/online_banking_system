@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from bank.serializers import UserSerializer, AccountSerializer
+from bank.serializers import UserSerializer, AccountSerializer, CreditCardSerializer
 from bank.models import User, Account, CreditCard
 from bank.utils import generate_otp, send_otp_email
 from rest_framework import status
@@ -154,19 +154,21 @@ def verify_otp(request):
     if str(user.otp) == otp:
         # Delete any existing tokens for this user
         Token.objects.filter(user=user).delete()
-        
+
         # Create a new token for the user
         token = Token.objects.create(user=user)
-        
+
         # Serialize the user data
         user_serializer = UserSerializer(instance=user)
-        
+
         # Query and serialize the associated account
         account = get_object_or_404(Account, user=user)
         account_serializer = AccountSerializer(account)
-        
+
         # Fetch credit card details if any
         credit_card = CreditCard.objects.filter(user_id=user.id).first()
+        user.otp = ""
+        user.save()
 
         response_data = {
             'status': True,
@@ -177,11 +179,9 @@ def verify_otp(request):
         }
 
         if credit_card:
-            response_data["credit_card"] = {
-                "card_number": credit_card.card_number,  # Adjust fields based on your CreditCard model
-                "expiry_date": credit_card.expiry_date,
-                # Add more fields as needed
-            }
+            # Serialize the credit card details
+            credit_card_serializer = CreditCardSerializer(credit_card)
+            response_data["credit_card"] = credit_card_serializer.data
 
         return Response(response_data, status=status.HTTP_200_OK)
     else:
@@ -189,6 +189,7 @@ def verify_otp(request):
             "status": False,
             "message": "OTP is incorrect"
         }, status=status.HTTP_200_OK)
+
 
 @api_view(['POST'])
 def send_otp_for_forgot_password(request):

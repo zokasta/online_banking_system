@@ -150,6 +150,9 @@ class CreditCard(models.Model):
         max_length=4,
         validators=[RegexValidator(regex=r'^\d{3,4}$', message='CVV must be 3 or 4 digits')]
     )
+    status = models.CharField(max_length=10,default="pending", choices=(('pending', 'pending'), ('confirm', 'confirm'), ('rejected', 'rejected')))
+    is_freeze = models.BooleanField(default=False)
+    
     limit_use = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)

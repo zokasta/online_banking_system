@@ -1,10 +1,14 @@
 from datetime import timezone as dt_timezone
 from django.utils import timezone
 from django.db.models import Sum
-from ..models import Transaction
+from ..models import Transaction, CreditCard, Account
 import random
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+
+
+def digits_of(n):
+    return [int(d) for d in str(n)]  # Ensure n is a string or integer
 
 
 def get_time_range(period):
@@ -68,5 +72,107 @@ def generate_expiration_date(years_from_now=3):
     expiration_date = now + relativedelta(years=years_from_now)
     return expiration_date.strftime('%m/%y')
 
+
 def generate_cvv():
     return str(random.randint(100, 9999)).zfill(3)
+
+
+def get_six_month_credit_card_transactions():
+    month_names, months = get_last_six_months()
+    transaction_sums = []
+
+    for start, end in months:
+        # Filter transactions for credit cards only
+        transactions = Transaction.objects.filter(created_at__range=(start, end),type='CC').aggregate(Sum('amount'))['amount__sum'] or 0
+        
+        # Print the filtered transactions for debugging
+        # print(f"Credit transactions for {start} to {end}: {transactions}")
+
+        transaction_sums.append(transactions)
+        
+        # Print the calculated total for debugging
+        # print(f"Total credit transactions for {start} to {end}: {total}")
+    print(transaction_sums)
+    print(month_names)
+    return month_names, transaction_sums
+
+
+def get_six_month_debit_card_transactions():
+    month_names, months = get_last_six_months()
+    transaction_sums = []
+
+    for start, end in months:
+        # Filter transactions for debit cards only
+        transactions = Transaction.objects.filter(created_at__range=(start, end),type='DC').aggregate(Sum('amount'))['amount__sum'] or 0
+        
+        # Print the filtered transactions for debugging
+        # print(f"Debit transactions for {start} to {end}: {transactions}")
+
+        # Calculate the total sum of amounts
+        
+        transaction_sums.append(transactions)
+        
+        # Print the calculated total for debugging
+        # print(f"Total debit transactions for {start} to {end}: {total}")
+    print(transaction_sums)
+    print(month_names)
+    return month_names, transaction_sums
+
+ # Import your models
+
+
+def generate_card_number(prefix="4", length=16):
+    """
+    Generate a unique valid credit card number using the Luhn algorithm.
+    The number will have the specified prefix and be of the given length.
+    The generated card number will also be checked against both the Account
+    (debit_card) and CreditCard (card_number) tables to ensure uniqueness.
+    """
+    
+    def card_number_exists(card_number):
+        """
+        Check if the card number exists in the Account's debit_card or CreditCard's card_number.
+        """
+        debit_card_exists = Account.objects.filter(debit_card=card_number).exists()
+        credit_card_exists = CreditCard.objects.filter(card_number=card_number).exists()
+        return debit_card_exists or credit_card_exists
+
+    def luhn_checksum(card_number):
+        """
+        Calculate the Luhn checksum for the given card number as a string.
+        """
+        def digits_of(n):
+            return [int(digit) for digit in str(n)]
+        
+        digits = digits_of(card_number)
+        odd_digits = digits[-1::-2]
+        even_digits = digits[-2::-2]
+        checksum = sum(odd_digits)
+        for d in even_digits:
+            checksum += sum(digits_of(d * 2))
+        return checksum % 10
+
+    card_number = None
+    
+    while not card_number or card_number_exists(card_number):
+        # Generate a potential card number
+        card_number = [int(x) for x in prefix]
+
+        # Generate random digits to fill the rest of the card number (except the last one)
+        while len(card_number) < (length - 1):
+            card_number.append(random.randint(0, 9))
+
+        # Calculate the checksum digit using the Luhn algorithm
+        card_number_as_string = ''.join(map(str, card_number))
+        checksum_digit = luhn_checksum(card_number_as_string + '0')
+        if checksum_digit != 0:
+            checksum_digit = 10 - checksum_digit
+        
+        # Append the checksum to the card number
+        card_number.append(checksum_digit)
+        
+        # Join the card number list into a single string
+        card_number = ''.join(map(str, card_number))
+    
+    # Return a unique card number
+    return card_number

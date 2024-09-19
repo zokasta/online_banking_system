@@ -13,8 +13,8 @@ POST http://127.0.0.1:8000/api/verify_otp/
 Content-Type: application/json
 
 {
-    "username":"fafa",
-    "otp":"153917"
+    "username":"faiz",
+    "otp":"714832"
 }
 
 ###
@@ -23,10 +23,10 @@ Content-Type: application/json
 
 {
     "name":"faiz",
-    "email":"faizrajput1510@outlook.com",
-    "password":"admin",
-    "username":"fafa",
-    "phone":"1234522199",
+    "email":"faizrajput1510@outloo.com",
+    "password":"faiz",
+    "username":"faiz",
+    "phone":"1234522699",
     "pan_card":"gjgpr2313k",
     "aadhar_card":"123456789012",
     "dob":"2024-5-14",

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from bank.models import User, Account, Transaction , City, State
+from bank.models import User, Account, Transaction , City, State, CreditCard, Report
 
 
 
@@ -64,3 +64,30 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     def get_receiver_name(self, obj):
         return obj.receiver.user.name
+
+
+class CreditCardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CreditCard
+        # Specify the fields you want to include in the serialized data
+        fields = ['user', 'card_number', 'expiration_date', 'cvv', 'status', 'is_freeze', 'limit_use', 'created_at', 'updated_at']
+        # Exclude sensitive information like CVV if needed
+        extra_kwargs = {
+            'cvv': {'write_only': True}  # This ensures CVV is only writable, not readable in responses
+        }
+    
+    # Optionally, you can add custom validation if needed
+    def validate_card_number(self, value):
+        if len(value) != 16:
+            raise serializers.ValidationError("Card number must be exactly 16 digits")
+        return value
+
+    def validate_expiration_date(self, value):
+        # Optionally, you can add more logic to check if the date is in the future
+        return value
+
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ['id', 'user', 'message', 'status', 'custom_name', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'status', 'created_at', 'updated_at']  

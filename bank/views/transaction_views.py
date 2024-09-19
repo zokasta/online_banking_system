@@ -10,7 +10,7 @@ from rest_framework import status
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import timedelta
-from .functions import get_time_range,get_six_month_transaction
+from .functions import get_time_range,get_six_month_transaction,get_six_month_credit_card_transactions,get_six_month_debit_card_transactions
 
 
 
@@ -89,12 +89,13 @@ def see_balance(request):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def transaction_history(request):
+    type = request.query_params.get('type')
     account = get_object_or_404(Account, user=request.user)
     search = request.query_params.get('search', '').strip()
 
     # Get both sent and received transactions
-    sent_transactions = Transaction.objects.filter(sender=account)
-    received_transactions = Transaction.objects.filter(receiver=account)
+    sent_transactions = Transaction.objects.filter(sender=account,type=type)
+    received_transactions = Transaction.objects.filter(receiver=account, type=type)
 
     # Use a dictionary to avoid duplicates
     transactions_dict = {}
@@ -424,6 +425,7 @@ def debit_card_transaction_sum(request, period):
     }, status=200)
 
 
+
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -484,3 +486,46 @@ def credit_card_transaction_count(request, period):
             "growth": growth_percentage
         }
     }, status=200)
+
+
+
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def credit_card_transaction_summary(request):
+    try:
+        month_names, transaction_sums = get_six_month_credit_card_transactions()
+
+        return Response({
+            'status': True,
+            'x-axis': {i: transaction_sums[i] for i in range(len(transaction_sums))},  # Format x-axis as a dictionary
+            'y-axis': {i: month_names[i] for i in range(len(month_names))},  # Format y-axis as a dictionary
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            'status': False,
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def debit_card_transaction_summary(request):
+    try:
+        month_names, transaction_sums = get_six_month_debit_card_transactions()
+
+        return Response({
+            'status': True,
+            'x-axis': {i: transaction_sums[i] for i in range(len(transaction_sums))},  # Format x-axis as a dictionary
+            'y-axis': {i: month_names[i] for i in range(len(month_names))},  # Format y-axis as a dictionary
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            'status': False,
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

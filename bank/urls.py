@@ -1,12 +1,8 @@
 # urls.py
 
 from django.urls import path
-from .views import auth_views
-from .views import transaction_views
-from .views import user_views
+from .views import city_state,credit_card_views,account_views,user_views,transaction_views,auth_views, report_views
 from .views.Admin import admin_dashboard_card
-from .views import account_views
-from .views import city_state
 
 urlpatterns = [
     path('login/', auth_views.login, name='login'),
@@ -36,7 +32,8 @@ urlpatterns = [
     
     path('admin/transaction-statistics-self-debit-card/<str:period>/', transaction_views.debit_card_transaction_sum ,name='total_transaction_amount'),
     path('admin/transaction-statistics-self-credit-card/<str:period>/', transaction_views.credit_card_transaction_count ,name='total_transaction_amount'),
-    # path('admin/transaction-monthly-summary-self/', transaction_views.transaction_monthly_summary ,name='transaction_monthly_summary'),
+    path('admin/transaction-monthly-summary-debit-card/', transaction_views.debit_card_transaction_summary ,name='transaction_monthly_summary'),
+    path('admin/transaction-monthly-summary-credit-card/', transaction_views.credit_card_transaction_summary ,name='transaction_monthly_summary'),
     
     
     
@@ -60,5 +57,12 @@ urlpatterns = [
     path('cities/<int:id>/', city_state.city_detail, name='city-detail'),
     path('states/<int:state_id>/cities/', city_state.cities_by_state, name='city-list-by-state-id'),
 
+    # Credit Card Area
+    path('credit-card/apply/', credit_card_views.apply_for_credit_card, name='generate_card_number'),
     
+    # 
+    path('report/create/', report_views.create_report, name='create report'),
+    path('report/see/', report_views.get_reports, name='get report'),
+    
+
 ]
