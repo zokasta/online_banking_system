@@ -74,7 +74,7 @@ def generate_expiration_date(years_from_now=3):
 
 
 def generate_cvv():
-    return str(random.randint(100, 9999)).zfill(3)
+    return str(random.randint(100, 999)).zfill(3)
 
 
 def get_six_month_credit_card_transactions():
@@ -176,3 +176,8 @@ def generate_card_number(prefix="4", length=16):
     
     # Return a unique card number
     return card_number
+
+
+
+
+

@@ -178,10 +178,12 @@ def verify_otp(request):
             'credit_card': False  # Default to False if no credit card is found
         }
 
-        if credit_card:
+        # Check if credit_card exists and if its status is "active"
+        if credit_card and credit_card.status == "confirm":
             # Serialize the credit card details
             credit_card_serializer = CreditCardSerializer(credit_card)
-            response_data["credit_card"] = credit_card_serializer.data
+            response_data["credit_card"] = True
+            response_data["credit_card_data"] = credit_card_serializer.data
 
         return Response(response_data, status=status.HTTP_200_OK)
     else:

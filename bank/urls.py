@@ -59,8 +59,9 @@ urlpatterns = [
 
     # Credit Card Area
     path('credit-card/apply/', credit_card_views.apply_for_credit_card, name='generate_card_number'),
+    path('credit-card/list/', credit_card_views.get_credit_card_list, name='get_credit_card_list'),
     
-    # 
+    # get_credit_card_list
     path('report/create/', report_views.create_report, name='create report'),
     path('report/see/', report_views.get_reports, name='get report'),
     

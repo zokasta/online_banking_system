@@ -26,10 +26,13 @@ def user_growth(request, period):
             growth_percentage = ((current_period_users - previous_period_users) / previous_period_users) * 100
 
         return Response({
-            'status': True,
-            'current': current_period_users,
-            'previous': previous_period_users,
-            'growth': growth_percentage
+            "status":True,
+            "data":{
+                'status': True,
+                'current': current_period_users,
+                'previous': previous_period_users,
+                'growth': growth_percentage
+            }
         }, status=status.HTTP_200_OK)
 
     except ValueError as e:

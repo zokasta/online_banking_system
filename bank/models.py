@@ -154,11 +154,13 @@ class CreditCard(models.Model):
     is_freeze = models.BooleanField(default=False)
     
     limit_use = models.DecimalField(max_digits=10, decimal_places=2)
+    used = models.DecimalField(max_digits=10, decimal_places=2,default=0)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f'Credit Card {self.card_number} for User {self.user.email}'
+
 
 
 class Report(models.Model):
@@ -175,7 +177,6 @@ class Report(models.Model):
         choices=Status.choices,
         default=Status.SEND,
     )
-    custom_name = models.CharField(max_length=20, null=False)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True, null=True)
 

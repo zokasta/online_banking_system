@@ -70,11 +70,11 @@ class CreditCardSerializer(serializers.ModelSerializer):
     class Meta:
         model = CreditCard
         # Specify the fields you want to include in the serialized data
-        fields = ['user', 'card_number', 'expiration_date', 'cvv', 'status', 'is_freeze', 'limit_use', 'created_at', 'updated_at']
+        fields = ['user','id','cvv', 'card_number', 'expiration_date', 'cvv', 'status', 'is_freeze', 'limit_use', 'created_at', 'updated_at']
         # Exclude sensitive information like CVV if needed
-        extra_kwargs = {
-            'cvv': {'write_only': True}  # This ensures CVV is only writable, not readable in responses
-        }
+        # extra_kwargs = {
+        #     'cvv': {'write_only': True}  # This ensures CVV is only writable, not readable in responses
+        # }
     
     # Optionally, you can add custom validation if needed
     def validate_card_number(self, value):
@@ -89,5 +89,5 @@ class CreditCardSerializer(serializers.ModelSerializer):
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
-        fields = ['id', 'user', 'message', 'status', 'custom_name', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'message', 'status', 'created_at', 'updated_at']
         read_only_fields = ['id', 'status', 'created_at', 'updated_at']  

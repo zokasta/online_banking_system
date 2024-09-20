@@ -4,14 +4,13 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction as db_transaction
-from ..models import Account, Transaction, User
+from ..models import Account, Transaction, User, CreditCard
 from ..serializers import TransactionSerializer, AccountSerializer
 from rest_framework import status
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import timedelta
 from .functions import get_time_range,get_six_month_transaction,get_six_month_credit_card_transactions,get_six_month_debit_card_transactions
-
 
 
 @api_view(['POST'])
@@ -21,39 +20,56 @@ def create_transaction(request):
     sender = request.user
     sender_account = get_object_or_404(Account, user=sender)
     amount = request.data.get('amount', 0)
-    email = request.data.get('email')
+    number = request.data.get('number')
     mpin = request.data.get('mpin')
+    transaction_type = request.data.get('type', 'DC').upper()
 
-    # Fetch the receiver's user object using the email
-    receiver_user = get_object_or_404(User, email=email)
-    
     if sender.mpin != mpin:
         return Response({
             "status": False,
             "message": "Invalid MPIN",
         }, status=status.HTTP_200_OK)
 
-    # Get the receiver's account
-    receiver_account = get_object_or_404(Account, user=receiver_user)
-    # return Response(sender_account.balance)
-    if sender_account.balance < amount:
-        return Response({
-            "status": False,
-            "message": "Insufficient funds"
-        }, status=status.HTTP_200_OK)
+    # Handle credit card transactions (type = CD)
+    if transaction_type == 'CD':
+        # Get sender's confirmed credit card (not frozen)
+        credit_card = get_object_or_404(CreditCard, user=sender, status='confirm', is_freeze=False)
 
-    # Perform the transaction
-    sender_account.balance -= amount
-    sender_account.save()
+        # Check if credit card has sufficient available balance
+        available_credit = credit_card.limit_use - credit_card.used
+        if available_credit < amount:
+            return Response({
+                "status": False,
+                "message": "Insufficient credit card balance"
+            }, status=status.HTTP_200_OK)
 
-    receiver_account.balance += amount
-    receiver_account.save()
+        # Deduct the amount from the credit card's used balance
+        credit_card.used += amount
+        credit_card.save()
+
+    # Handle normal account balance transactions
+    else:
+        receiver_account = get_object_or_404(Account, debit_card=number)
+
+        if sender_account.balance < amount:
+            return Response({
+                "status": False,
+                "message": "Insufficient funds"
+            }, status=status.HTTP_200_OK)
+
+        # Deduct from sender account and add to receiver account
+        sender_account.balance -= amount
+        sender_account.save()
+
+        receiver_account.balance += amount
+        receiver_account.save()
 
     # Create the transaction record
     transaction_data = {
         'sender': sender_account.id,
-        'receiver': receiver_account.id,
-        'amount': amount
+        'receiver': receiver_account.id if transaction_type != 'CD' else None,  # For credit card, receiver may not be account-based
+        'amount': amount,
+        'type': transaction_type  # Save transaction type
     }
 
     serializer = TransactionSerializer(data=transaction_data)
@@ -324,9 +340,11 @@ def transaction_growth(request, period):
         growth_percentage = f"{growth_percentage:.2f}"
         return Response({
             'status': True,
-            'current': current_period_amount,
-            'previous': previous_period_amount,
-            'growth': growth_percentage
+            "data":{
+                'current': current_period_amount,
+                'previous': previous_period_amount,
+                'growth': growth_percentage
+            }
         }, status=status.HTTP_200_OK)
 
     except ValueError as e:
@@ -490,7 +508,6 @@ def credit_card_transaction_count(request, period):
 
 
 
-
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -509,6 +526,7 @@ def credit_card_transaction_summary(request):
             'status': False,
             'message': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 @api_view(['GET'])
