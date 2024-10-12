@@ -77,13 +77,13 @@ def generate_cvv():
     return str(random.randint(100, 999)).zfill(3)
 
 
-def get_six_month_credit_card_transactions():
+def get_six_month_credit_card_transactions(id):
     month_names, months = get_last_six_months()
     transaction_sums = []
 
     for start, end in months:
         # Filter transactions for credit cards only
-        transactions = Transaction.objects.filter(created_at__range=(start, end),type='CC').aggregate(Sum('amount'))['amount__sum'] or 0
+        transactions = Transaction.objects.filter(created_at__range=(start, end),type='CC',sender_id=id).aggregate(Sum('amount'))['amount__sum'] or 0
         
         # Print the filtered transactions for debugging
         # print(f"Credit transactions for {start} to {end}: {transactions}")
@@ -97,13 +97,13 @@ def get_six_month_credit_card_transactions():
     return month_names, transaction_sums
 
 
-def get_six_month_debit_card_transactions():
+def get_six_month_debit_card_transactions(id):
     month_names, months = get_last_six_months()
     transaction_sums = []
 
     for start, end in months:
         # Filter transactions for debit cards only
-        transactions = Transaction.objects.filter(created_at__range=(start, end),type='DC').aggregate(Sum('amount'))['amount__sum'] or 0
+        transactions = Transaction.objects.filter(created_at__range=(start, end),type='DC',sender_id=id).aggregate(Sum('amount'))['amount__sum'] or 0
         
         # Print the filtered transactions for debugging
         # print(f"Debit transactions for {start} to {end}: {transactions}")

@@ -30,10 +30,11 @@ def create_transaction(request):
             "message": "Invalid MPIN",
         }, status=status.HTTP_200_OK)
 
-    # Handle credit card transactions (type = CD)
-    if transaction_type == 'CD':
+    
+    receiver_account = get_object_or_404(Account, debit_card=number)
+    if transaction_type == 'CC':
         # Get sender's confirmed credit card (not frozen)
-        credit_card = get_object_or_404(CreditCard, user=sender, status='confirm', is_freeze=False)
+        credit_card = get_object_or_404(CreditCard, user=sender)
 
         # Check if credit card has sufficient available balance
         available_credit = credit_card.limit_use - credit_card.used
@@ -46,10 +47,10 @@ def create_transaction(request):
         # Deduct the amount from the credit card's used balance
         credit_card.used += amount
         credit_card.save()
+        receiver_account.balance += amount
 
     # Handle normal account balance transactions
     else:
-        receiver_account = get_object_or_404(Account, debit_card=number)
 
         if sender_account.balance < amount:
             return Response({
@@ -58,11 +59,11 @@ def create_transaction(request):
             }, status=status.HTTP_200_OK)
 
         # Deduct from sender account and add to receiver account
-        sender_account.balance -= amount
-        sender_account.save()
-
-        receiver_account.balance += amount
-        receiver_account.save()
+        if sender_account.id != receiver_account.id:
+            sender_account.balance -= amount
+            sender_account.save()
+            receiver_account.balance += amount
+            receiver_account.save()
 
     # Create the transaction record
     transaction_data = {
@@ -78,13 +79,13 @@ def create_transaction(request):
         return Response({
             'status': True,
             'transaction': serializer.data
-        }, status=status.HTTP_201_CREATED)
+        })
 
     errors = {f"{field} field": next(iter(errors)) for field, errors in serializer.errors.items()}
     return Response({
         'status': False,
         'message': list(errors.values())[0]
-    }, status=status.HTTP_200_OK)
+    })
 
 
 
@@ -512,8 +513,9 @@ def credit_card_transaction_count(request, period):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def credit_card_transaction_summary(request):
+    id = request.user.id
     try:
-        month_names, transaction_sums = get_six_month_credit_card_transactions()
+        month_names, transaction_sums = get_six_month_credit_card_transactions(id)
 
         return Response({
             'status': True,
@@ -533,8 +535,9 @@ def credit_card_transaction_summary(request):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def debit_card_transaction_summary(request):
+    id = request.user.id
     try:
-        month_names, transaction_sums = get_six_month_debit_card_transactions()
+        month_names, transaction_sums = get_six_month_debit_card_transactions(id)
 
         return Response({
             'status': True,

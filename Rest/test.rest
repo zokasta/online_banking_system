@@ -1,24 +1,24 @@
-POST http://127.0.0.1:8000/api/login/
+POST https://6a12-103-70-34-146.ngrok-free.app/api/login/
 Content-Type: application/json
 
 { 
     "username":"faiz",
-    "password":"faiz"
+    "password":"fafa"
 }
 
 
 ###
 
-POST http://127.0.0.1:8000/api/verify_otp/
+POST https://6a12-103-70-34-146.ngrok-free.app/api/verify_otp/
 Content-Type: application/json
 
 {
     "username":"faiz",
-    "otp":"714832"
+    "otp":"482289"
 }
 
 ###
-POST http://127.0.0.1:8000/api/signup/
+POST https://6a12-103-70-34-146.ngrok-free.app/api/signup/
 Content-Type: application/json
 
 {
@@ -68,6 +68,6 @@ Content-Type: application/json
 
 ###
 GET http://127.0.0.1:8000/api/user/1
-Authorization: Token 71751a90b5c7d34493f8ae124d3e3dd48537a19d
+Authorization: Token 3b030f05fa3339f5e1eace47775b6b7e762e3f82
 Content-Type: application/json
 

@@ -195,8 +195,8 @@ def verify_otp(request):
 
 @api_view(['POST'])
 def send_otp_for_forgot_password(request):
-    username = request.data.get('username')
-    user = get_object_or_404(User, username=username)
+    email = request.data.get('email')
+    user = get_object_or_404(User, email=email)
 
     # Generate and save OTP
     otp = generate_otp()

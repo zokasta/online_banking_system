@@ -18,7 +18,7 @@ def apply_for_credit_card(request):
 
     # Check if the user already has a credit card
     if CreditCard.objects.filter(user=user).exists():
-        return Response({'status': False, 'message': 'You already have a credit card.'})
+        return Response({'status': False, 'message': 'You already send the application.'})
 
     # Generate credit card details
     card_number = generate_card_number()  # Implemented generate_card_number

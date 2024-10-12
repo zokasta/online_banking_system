@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from ..models import State, City
 from ..serializers import StateSerializer, CitySerializer
 
+
+
 @api_view(['GET', 'POST'])
 def state_list_create(request):
     if request.method == 'GET':
@@ -16,6 +18,8 @@ def state_list_create(request):
             serializer.save()
             return Response({"status": True, "data": serializer.data, "message": "State created successfully."})
         return Response({"status": False, "message": "State creation failed.", "errors": serializer.errors})
+
+
 
 @api_view(['GET', 'PUT', 'DELETE'])
 def state_detail(request, id):
@@ -39,6 +43,8 @@ def state_detail(request, id):
         state.delete()
         return Response({"status": True, "message": "State deleted successfully."})
 
+
+
 @api_view(['GET', 'POST'])
 def city_list_create(request):
     if request.method == 'GET':
@@ -53,6 +59,8 @@ def city_list_create(request):
             return Response({"status": True, "data": serializer.data, "message": "City created successfully."})
         return Response({"status": False, "message": "City creation failed.", "errors": serializer.errors})
 
+
+
 @api_view(['GET'])
 def cities_by_state(request, state_id):
     try:
@@ -63,6 +71,8 @@ def cities_by_state(request, state_id):
     cities = City.objects.filter(state=state)
     serializer = CitySerializer(cities, many=True)
     return Response({"status": True, "data": serializer.data, "message": f"Cities in state {state.name}."})
+
+
 
 @api_view(['GET', 'PUT', 'DELETE'])
 def city_detail(request, id):
