@@ -1,18 +1,17 @@
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
-from ..models import CreditCard
-from ..serializers import CreditCardSerializer
+from ..models import CreditCard, Account
 from .functions import generate_card_number, generate_expiration_date, generate_cvv
+from ..permissions import IsAdminUserType, IsUserType
 
 
 # @csrf_exempt  
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsUserType])
 def apply_for_credit_card(request):
     user = request.user  # Get the authenticated user
 
@@ -47,7 +46,7 @@ def apply_for_credit_card(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def get_credit_card_list(request):
     user = request.user  # Get the authenticated user
 
@@ -84,5 +83,117 @@ def get_credit_card_list(request):
             "credit_cards": credit_card_list
         }
     }, status=200)
+
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsUserType])
+def get_credit_card_usage(request):
+    user_id = request.user.id
+    try:
+        credit_card = CreditCard.objects.get(user_id=user_id)
+        left_limit = credit_card.limit_use- credit_card.used
+        return Response({
+            "status": True,
+            "data": left_limit
+        }, status=200)
+    except CreditCard.DoesNotExist:
+        return Response({
+            "status": False,
+            "message": "No credit card found for this user."
+        })
+    except Exception as e:
+        return Response({
+            "status": False,
+            "message": f"An error occurred: {str(e)}"
+        })
+
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsUserType])
+def pay_credit_card_bills(request):
+    user_id = request.user.id 
+
+    try:
+        mpin = request.data.get('mpin')
+        account = Account.objects.get(user_id=user_id)
+        credit_card = CreditCard.objects.get(user_id=user_id)
+        user_mpin = request.user.mpin
+        
+        if mpin != user_mpin:
+            return Response({
+                "status": False,
+                "message": "MPIN is not a valid"
+            })
+            
+
+        # Get the outstanding amount (used) from the credit card
+        payment_amount = credit_card.used
+
+        # Check if the user has enough balance in their account
+        if account.balance < payment_amount:
+            return Response({
+                "status": False,
+                "message": "Insufficient balance in your account."
+            })
+
+        # Check if the credit card has any outstanding balance
+        if credit_card.used == 0:
+            return Response({
+                "status": False,
+                "message": "No outstanding balance on your credit card."
+            })
+
+        # Deduct the payment from the user's account
+        account.balance -= payment_amount
+        account.save()
+
+        # Transfer the payment to the account with ID 1
+        try:
+            receiving_account = Account.objects.get(id=1)
+            receiving_account.balance += payment_amount
+            receiving_account.save()
+        except Account.DoesNotExist:
+            return Response({
+                "status": False,
+                "message": "Receiving account with ID 1 does not exist."
+            })
+
+        # Deduct the payment from the credit card's used amount
+        credit_card.used = 0  # Since the full amount is being paid, set used to 0
+        credit_card.updated_at = timezone.now()  # Update the timestamp
+        credit_card.save()
+
+        return Response({
+            "status": True,
+            "message": "Payment successful.",
+            "user_account_balance": account.balance,
+            "paid_amount": payment_amount
+        }, status=200)
+
+    except Account.DoesNotExist:
+        return Response({
+            "status": False,
+            "message": "User account not found."
+        })
+
+    except CreditCard.DoesNotExist:
+        return Response({
+            "status": False,
+            "message": "No credit card found for this user."
+        })
+
+    except Exception as e:
+        return Response({
+            "status": False,
+            "message": f"An error occurred: {str(e)}"
+        })
+
+
+
+
 
 

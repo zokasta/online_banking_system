@@ -30,11 +30,15 @@ urlpatterns = [
     path('admin/transaction-monthly-summary/', transaction_views.transaction_monthly_summary ,name='transaction_monthly_summary'),
     
     
+    path('user/transaction-statistics-self-debit-card/<str:period>/', transaction_views.debit_card_transaction_sum_for_user ,name='total_transaction_amount'),
+    path('user/transaction-statistics-self-credit-card/<str:period>/', transaction_views.credit_card_transaction_count_for_user ,name='total_transaction_amount'),
+
+    path('all/transaction-monthly-summary-debit-card/', transaction_views.debit_card_transaction_summary ,name='transaction_monthly_summary'),
+    path('all/transaction-monthly-summary-credit-card/', transaction_views.credit_card_transaction_summary ,name='transaction_monthly_summary'),
+    
+    
     path('admin/transaction-statistics-self-debit-card/<str:period>/', transaction_views.debit_card_transaction_sum ,name='total_transaction_amount'),
     path('admin/transaction-statistics-self-credit-card/<str:period>/', transaction_views.credit_card_transaction_count ,name='total_transaction_amount'),
-    path('admin/transaction-monthly-summary-debit-card/', transaction_views.debit_card_transaction_summary ,name='transaction_monthly_summary'),
-    path('admin/transaction-monthly-summary-credit-card/', transaction_views.credit_card_transaction_summary ,name='transaction_monthly_summary'),
-    
     
     
     
@@ -60,6 +64,9 @@ urlpatterns = [
     # Credit Card Area
     path('credit-card/apply/', credit_card_views.apply_for_credit_card, name='generate_card_number'),
     path('credit-card/list/', credit_card_views.get_credit_card_list, name='get_credit_card_list'),
+    path('credit-card-usage/', credit_card_views.get_credit_card_usage, name='credit_card_usage'),
+    path('pay-credit-card-bills/', credit_card_views.pay_credit_card_bills, name='pay_credit_card_bills'),
+    
     
     # get_credit_card_list
     path('report/create/', report_views.create_report, name='create report'),
@@ -67,3 +74,4 @@ urlpatterns = [
     
 
 ]
+# 

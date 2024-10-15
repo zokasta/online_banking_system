@@ -77,45 +77,37 @@ def generate_cvv():
     return str(random.randint(100, 999)).zfill(3)
 
 
-def get_six_month_credit_card_transactions(id):
+def get_six_month_credit_card_transactions(user):
+    id = user.id
     month_names, months = get_last_six_months()
     transaction_sums = []
 
-    for start, end in months:
-        # Filter transactions for credit cards only
-        transactions = Transaction.objects.filter(created_at__range=(start, end),type='CC',sender_id=id).aggregate(Sum('amount'))['amount__sum'] or 0
-        
-        # Print the filtered transactions for debugging
-        # print(f"Credit transactions for {start} to {end}: {transactions}")
+    if user.type == 'admin':
+        for start, end in months:
+            transactions = Transaction.objects.filter(created_at__range=(start, end),type='CC').aggregate(Sum('amount'))['amount__sum'] or 0
+            transaction_sums.append(transactions)
+    else:
+         for start, end in months:
+            transactions = Transaction.objects.filter(created_at__range=(start, end),type='CC',sender_id=id).aggregate(Sum('amount'))['amount__sum'] or 0
+            transaction_sums.append(transactions)
 
-        transaction_sums.append(transactions)
-        
-        # Print the calculated total for debugging
-        # print(f"Total credit transactions for {start} to {end}: {total}")
-    print(transaction_sums)
-    print(month_names)
+
     return month_names, transaction_sums
 
 
-def get_six_month_debit_card_transactions(id):
+def get_six_month_debit_card_transactions(user):
+    id = user.id
     month_names, months = get_last_six_months()
     transaction_sums = []
 
-    for start, end in months:
-        # Filter transactions for debit cards only
-        transactions = Transaction.objects.filter(created_at__range=(start, end),type='DC',sender_id=id).aggregate(Sum('amount'))['amount__sum'] or 0
-        
-        # Print the filtered transactions for debugging
-        # print(f"Debit transactions for {start} to {end}: {transactions}")
-
-        # Calculate the total sum of amounts
-        
-        transaction_sums.append(transactions)
-        
-        # Print the calculated total for debugging
-        # print(f"Total debit transactions for {start} to {end}: {total}")
-    print(transaction_sums)
-    print(month_names)
+    if user.id == 'admin':
+        for start, end in months:
+            transactions = Transaction.objects.filter(created_at__range=(start, end),type='DC').aggregate(Sum('amount'))['amount__sum'] or 0
+            transaction_sums.append(transactions)
+    else:
+        for start, end in months:
+            transactions = Transaction.objects.filter(created_at__range=(start, end),type='DC',sender_id=id).aggregate(Sum('amount'))['amount__sum'] or 0
+            transaction_sums.append(transactions)
     return month_names, transaction_sums
 
  # Import your models

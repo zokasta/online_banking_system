@@ -6,12 +6,13 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from ..models import Report
+from ..permissions import IsAdminUserType, IsUserType
 from ..serializers import ReportSerializer
 
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsUserType])
 def create_report(request):
     # Set the user in the request data
     data = request.data.copy()
@@ -39,7 +40,7 @@ def create_report(request):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def get_reports(request):
     reports = Report.objects.filter(user=request.user)  # Filter reports by the logged-in user
     serializer = ReportSerializer(reports, many=True)  # Serialize the list of reports

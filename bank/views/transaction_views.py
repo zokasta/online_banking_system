@@ -1,97 +1,139 @@
+"""
+# Todo: I think we should add 2% charge on Credit Card
+# Status: Pending
+
+"""
+
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.db import transaction as db_transaction
 from ..models import Account, Transaction, User, CreditCard
 from ..serializers import TransactionSerializer, AccountSerializer
 from rest_framework import status
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models import Q
 from .functions import get_time_range,get_six_month_transaction,get_six_month_credit_card_transactions,get_six_month_debit_card_transactions
+from ..permissions import IsAdminUserType, IsUserType
 
+
+# This will help for the Rollback on database if error Comes
+# is part of Python’s logging module, which is used to record events, such as errors or important informational messages, during the execution of your program.
+"""
+Todo: Check that if Rollback work or not
+"""
+from django.db import transaction
+import logging
+
+logger = logging.getLogger(__name__)
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsUserType])
 def create_transaction(request):
     sender = request.user
-    sender_account = get_object_or_404(Account, user=sender)
     amount = request.data.get('amount', 0)
     number = request.data.get('number')
     mpin = request.data.get('mpin')
     transaction_type = request.data.get('type', 'DC').upper()
 
+    # Validation for amount
+    if not isinstance(amount, (int, float)) or amount <= 0:
+        return Response({
+            "status": False,
+            "message": "Invalid amount. Amount must be greater than zero."
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check MPIN
     if sender.mpin != mpin:
         return Response({
             "status": False,
             "message": "Invalid MPIN",
-        }, status=status.HTTP_200_OK)
+        }, status=status.HTTP_401_UNAUTHORIZED)
 
-    
-    receiver_account = get_object_or_404(Account, debit_card=number)
-    if transaction_type == 'CC':
-        # Get sender's confirmed credit card (not frozen)
-        credit_card = get_object_or_404(CreditCard, user=sender)
+    try:
+        # Start an atomic transaction block
+        with transaction.atomic():
 
-        # Check if credit card has sufficient available balance
-        available_credit = credit_card.limit_use - credit_card.used
-        if available_credit < amount:
+            # Get sender's account with locking
+            sender_account = get_object_or_404(Account.objects.select_for_update(), user=sender)
+
+            # Handle Credit Card Transaction
+            if transaction_type == 'CC':
+                credit_card = get_object_or_404(CreditCard, user=sender, is_freeze=False)
+                available_credit = credit_card.limit_use - credit_card.used
+
+                if available_credit < amount:
+                    return Response({
+                        "status": False,
+                        "message": "Insufficient credit card balance"
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Deduct from credit card used balance
+                credit_card.used += amount
+                credit_card.save()
+
+                # Find receiver account
+                receiver_account = get_object_or_404(Account.objects.select_for_update(), debit_card=number)
+                receiver_account.balance += amount
+                receiver_account.save()
+
+            # Handle normal Debit Card or account balance transactions
+            else:
+                # Get the receiver's account (with locking)
+                receiver_account = get_object_or_404(Account.objects.select_for_update(), debit_card=number)
+
+                if sender_account.balance < amount:
+                    return Response({
+                        "status": False,
+                        "message": "Insufficient funds"
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Deduct from sender and credit to receiver
+                if sender_account.id != receiver_account.id:
+                    sender_account.balance -= amount
+                    sender_account.save()
+
+                    receiver_account.balance += amount
+                    receiver_account.save()
+
+            # Create the transaction record
+            transaction_data = {
+                'sender': sender_account.id,
+                'receiver': receiver_account.id,
+                'amount': amount,
+                'type': transaction_type,
+            }
+
+            serializer = TransactionSerializer(data=transaction_data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'status': True,
+                    'transaction': serializer.data
+                }, status=status.HTTP_201_CREATED)
+
+            errors = {f"{field} field": next(iter(errors)) for field, errors in serializer.errors.items()}
             return Response({
-                "status": False,
-                "message": "Insufficient credit card balance"
-            }, status=status.HTTP_200_OK)
+                'status': False,
+                'message': list(errors.values())[0]
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Deduct the amount from the credit card's used balance
-        credit_card.used += amount
-        credit_card.save()
-        receiver_account.balance += amount
-
-    # Handle normal account balance transactions
-    else:
-
-        if sender_account.balance < amount:
-            return Response({
-                "status": False,
-                "message": "Insufficient funds"
-            }, status=status.HTTP_200_OK)
-
-        # Deduct from sender account and add to receiver account
-        if sender_account.id != receiver_account.id:
-            sender_account.balance -= amount
-            sender_account.save()
-            receiver_account.balance += amount
-            receiver_account.save()
-
-    # Create the transaction record
-    transaction_data = {
-        'sender': sender_account.id,
-        'receiver': receiver_account.id if transaction_type != 'CD' else None,  # For credit card, receiver may not be account-based
-        'amount': amount,
-        'type': transaction_type  # Save transaction type
-    }
-
-    serializer = TransactionSerializer(data=transaction_data)
-    if serializer.is_valid():
-        serializer.save()
+    except Exception as e:
+        logger.error(f"Transaction error: {str(e)}")
+        # Automatic rollback will happen due to transaction.atomic()
         return Response({
-            'status': True,
-            'transaction': serializer.data
-        })
-
-    errors = {f"{field} field": next(iter(errors)) for field, errors in serializer.errors.items()}
-    return Response({
-        'status': False,
-        'message': list(errors.values())[0]
-    })
-
+            'status': False,
+            'message': 'Transaction failed, all changes rolled back.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsUserType])
 def see_balance(request):
     account = get_object_or_404(Account, user=request.user)
     serializer = AccountSerializer(account)
@@ -104,7 +146,7 @@ def see_balance(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsUserType])
 def transaction_history(request):
     type = request.query_params.get('type')
     account = get_object_or_404(Account, user=request.user)
@@ -180,10 +222,9 @@ def transaction_history(request):
 
 
 
-
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsUserType])
 def show_transaction(request):
     user = request.user
     # Get the user's account
@@ -214,10 +255,9 @@ def show_transaction(request):
 
 
 
-
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def transaction_count(request):
     period = request.query_params.get('time', 'all')  # Get the time period from query parameters
 
@@ -259,10 +299,9 @@ def transaction_count(request):
 
 
 
-
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def admin_transaction_history(request):
     search = request.query_params.get('search', '').strip()
 
@@ -306,7 +345,7 @@ def admin_transaction_history(request):
 
 @api_view(['DELETE'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def admin_transaction_delete(request, transaction_id):
     # Fetch the transaction by its ID
     transaction = get_object_or_404(Transaction, id=transaction_id)
@@ -321,10 +360,9 @@ def admin_transaction_delete(request, transaction_id):
 
 
 
-
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def transaction_growth(request, period):
     try:
         current_start, previous_start = get_time_range(period)
@@ -363,7 +401,7 @@ def transaction_growth(request, period):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def transaction_monthly_summary(request):
     try:
         month_names, transaction_sums = get_six_month_transaction()
@@ -384,7 +422,7 @@ def transaction_monthly_summary(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def debit_card_transaction_sum(request, period):
     now = timezone.now()
 
@@ -447,7 +485,7 @@ def debit_card_transaction_sum(request, period):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def credit_card_transaction_count(request, period):
     now = timezone.now()
 
@@ -508,14 +546,167 @@ def credit_card_transaction_count(request, period):
 
 
 
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsUserType])
+def debit_card_transaction_sum_for_user(request, period):
+    user_id = request.user.id
+    now = timezone.now()
+
+    def get_sum_and_previous_sum(period):
+        if period == 'day':
+            start_date = now - timedelta(days=1)
+            previous_start_date = now - timedelta(days=2)
+        elif period == 'week':
+            start_date = now - timedelta(weeks=1)
+            previous_start_date = now - timedelta(weeks=2)
+        elif period == 'month':
+            start_date = now - timedelta(weeks=4)  # Approximate month as 4 weeks
+            previous_start_date = now - timedelta(weeks=8)  # Approximate previous month as 8 weeks
+        elif period == 'year':
+            start_date = now - timedelta(days=365)
+            previous_start_date = now - timedelta(days=730)  # Approximate previous year as 730 days
+        elif period == 'all':
+            start_date = None
+            previous_start_date = None
+        else:
+            return None, None
+
+        # Filter transactions based on the start_date and user being the sender or receiver and type (debit card)
+        if start_date:
+            current_transactions = Transaction.objects.filter(
+                created_at__gte=start_date,
+                type=Transaction.TransactionType.DEBIT_CARD
+            ).filter(
+                (Q(sender_id=user_id) | Q(receiver_id=user_id))
+            )
+
+            previous_transactions = Transaction.objects.filter(
+                created_at__gte=previous_start_date,
+                created_at__lt=start_date,
+                type=Transaction.TransactionType.DEBIT_CARD
+            ).filter(
+                (Q(sender_id=user_id) | Q(receiver_id=user_id))
+            )
+        else:
+            current_transactions = Transaction.objects.filter(
+                type=Transaction.TransactionType.DEBIT_CARD
+            ).filter(
+                (Q(sender_id=user_id) | Q(receiver_id=user_id))
+            )
+            previous_transactions = Transaction.objects.none()  # No previous data if period is 'all'
+
+        current_sum = current_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
+        previous_sum = previous_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
+
+        return current_sum, previous_sum
+
+    current_sum, previous_sum = get_sum_and_previous_sum(period)
+
+    if current_sum is None:
+        return Response({
+            "status": False,
+            "message": "Invalid time period. Choose from 'day', 'week', 'month', 'year', 'all'."
+        }, status=400)
+
+    # Calculate growth percentage
+    if previous_sum == 0:
+        growth_percentage = 0 if current_sum == 0 else 100
+    else:
+        growth_percentage = ((current_sum - previous_sum) / previous_sum) * 100
+
+    return Response({
+        "status": True,
+        "data": {
+            "current": current_sum,
+            "previous": previous_sum,
+            "growth": growth_percentage
+        }
+    }, status=200)
+
+
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsUserType])
+def credit_card_transaction_count_for_user(request, period):
+    user_id = request.user.id
+    now = timezone.now()
+
+    def get_sum_and_previous_sum(period):
+        if period == 'day':
+            start_date = now - timedelta(days=1)
+            previous_start_date = now - timedelta(days=2)
+        elif period == 'week':
+            start_date = now - timedelta(weeks=1)
+            previous_start_date = now - timedelta(weeks=2)
+        elif period == 'month':
+            start_date = now - timedelta(weeks=4)  # Approximate month as 4 weeks
+            previous_start_date = now - timedelta(weeks=8)  # Approximate previous month as 8 weeks
+        elif period == 'year':
+            start_date = now - timedelta(days=365)
+            previous_start_date = now - timedelta(days=730)  # Approximate previous year as 730 days
+        elif period == 'all':
+            start_date = None
+            previous_start_date = None
+        else:
+            return None, None
+
+        # Filter transactions based on the start_date and type (credit card) where user is sender or receiver
+        if start_date:
+            current_transactions = Transaction.objects.filter(
+                created_at__gte=start_date,
+                type=Transaction.TransactionType.CREDIT_CARD
+            ).filter(Q(sender_id=user_id) | Q(receiver_id=user_id))
+
+            previous_transactions = Transaction.objects.filter(
+                created_at__gte=previous_start_date,
+                created_at__lt=start_date,
+                type=Transaction.TransactionType.CREDIT_CARD
+            ).filter(Q(sender_id=user_id) | Q(receiver_id=user_id))
+        else:
+            current_transactions = Transaction.objects.filter(
+                type=Transaction.TransactionType.CREDIT_CARD
+            ).filter(Q(sender_id=user_id) | Q(receiver_id=user_id))
+            previous_transactions = Transaction.objects.none()  # No previous data if period is 'all'
+
+        current_sum = current_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
+        previous_sum = previous_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
+
+        return current_sum, previous_sum
+
+    current_sum, previous_sum = get_sum_and_previous_sum(period)
+
+    if current_sum is None:
+        return Response({
+            "status": False,
+            "message": "Invalid time period. Choose from 'day', 'week', 'month', 'year', 'all'."
+        }, status=400)
+
+    # Calculate growth percentage
+    if previous_sum == 0:
+        growth_percentage = 0 if current_sum == 0 else 100
+    else:
+        growth_percentage = ((current_sum - previous_sum) / previous_sum) * 100
+
+    return Response({
+        "status": True,
+        "data": {
+            "current": current_sum,
+            "previous_sum": previous_sum,
+            "growth": growth_percentage
+        }
+    }, status=200)
+
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsUserType])
 def credit_card_transaction_summary(request):
-    id = request.user.id
+    user = request.user
     try:
-        month_names, transaction_sums = get_six_month_credit_card_transactions(id)
+        month_names, transaction_sums = get_six_month_credit_card_transactions(user)
 
         return Response({
             'status': True,
@@ -533,11 +724,11 @@ def credit_card_transaction_summary(request):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsUserType])
 def debit_card_transaction_summary(request):
-    id = request.user.id
+    user = request.user
     try:
-        month_names, transaction_sums = get_six_month_debit_card_transactions(id)
+        month_names, transaction_sums = get_six_month_debit_card_transactions(user)
 
         return Response({
             'status': True,
@@ -550,3 +741,6 @@ def debit_card_transaction_summary(request):
             'status': False,
             'message': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+

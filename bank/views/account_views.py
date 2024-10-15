@@ -11,7 +11,7 @@ from django.db import transaction
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUser])
 def admin_account_list(request):
     search = request.query_params.get('search', '').strip()
 
@@ -52,7 +52,7 @@ def admin_account_list(request):
 
 @api_view(['DELETE'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUser])
 def admin_account_delete(request, account_id):
     account = get_object_or_404(Account, id=account_id)
 
@@ -69,7 +69,7 @@ def admin_account_delete(request, account_id):
 
 @api_view(['PATCH'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUser])
 def admin_account_edit(request, account_id):
     account = get_object_or_404(Account, id=account_id)
 
@@ -83,7 +83,7 @@ def admin_account_edit(request, account_id):
         return Response({
             "status": False,
             "message": "All fields (name, balance, debit_card) are required."
-        }, status=status.HTTP_400_BAD_REQUEST)
+        })
 
     try:
         with transaction.atomic():
@@ -97,10 +97,14 @@ def admin_account_edit(request, account_id):
             return Response({
                 "status": True,
                 "message": f"Account with ID {account_id} has been updated."
-            }, status=status.HTTP_200_OK)
+            })
 
     except Exception as e:
         return Response({
             "status": False,
             "message": f"An error occurred: {str(e)}"
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        })
+
+
+
+

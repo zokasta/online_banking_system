@@ -136,7 +136,7 @@ def adminLogin(request):
     user.save()
 
     # Send OTP via email
-    send_otp_email(user.email, otp)
+    # send_otp_email(user.email, otp)
 
     return Response({
         "status": True,
