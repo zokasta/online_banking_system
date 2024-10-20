@@ -3,6 +3,7 @@
 from django.urls import path
 from .views import city_state,credit_card_views,account_views,user_views,transaction_views,auth_views, report_views
 from .views.Admin import admin_dashboard_card
+from .views import city_views, state_views
 
 urlpatterns = [
     path('login/', auth_views.login, name='login'),
@@ -55,18 +56,22 @@ urlpatterns = [
     
 
     # City and state system
-    path('states/', city_state.state_list_create, name='state-list-create'),
-    path('states/<int:id>/', city_state.state_detail, name='state-detail'),
-    path('cities/', city_state.city_list_create, name='city-list-create'),
-    path('cities/<int:id>/', city_state.city_detail, name='city-detail'),
-    path('states/<int:state_id>/cities/', city_state.cities_by_state, name='city-list-by-state-id'),
+    path('states/create/', state_views.create_state, name='state-list-create'),
+    path('states/', state_views.state_list, name='state-list-create'),
+    path('states/<int:id>/', state_views.state_detail, name='state-detail'),
+    
+    path('cities/', city_views.city_list, name='city-list-create'),
+    path('cities/create/', city_views.create_city, name='create-city'),
+    path('cities/<int:id>/', city_views.city_detail, name='city-detail'),
+    path('states/<int:state_id>/cities/', state_views.cities_by_state, name='city-list-by-state-id'),
 
     # Credit Card Area
     path('credit-card/apply/', credit_card_views.apply_for_credit_card, name='generate_card_number'),
     path('credit-card/list/', credit_card_views.get_credit_card_list, name='get_credit_card_list'),
+    path('credit-card/list/pending/', credit_card_views.get_pending_credit_card_applications, name='get_pending_credit_card_applications'),
+    path('credit-card/list/status/<int:credit_card_id>/', credit_card_views.change_credit_card_status, name='change_credit_card_status'),
     path('credit-card-usage/', credit_card_views.get_credit_card_usage, name='credit_card_usage'),
     path('pay-credit-card-bills/', credit_card_views.pay_credit_card_bills, name='pay_credit_card_bills'),
-    
     
     # get_credit_card_list
     path('report/create/', report_views.create_report, name='create report'),

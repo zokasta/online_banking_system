@@ -1,17 +1,18 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from ..models import Account, User
+from ..models import Account
 from django.db import transaction
+from ..permissions import IsAdminUserType, IsUserType
 
 
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated, IsAdminUser])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def admin_account_list(request):
     search = request.query_params.get('search', '').strip()
 
@@ -52,7 +53,7 @@ def admin_account_list(request):
 
 @api_view(['DELETE'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated, IsAdminUser])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def admin_account_delete(request, account_id):
     account = get_object_or_404(Account, id=account_id)
 
@@ -69,7 +70,7 @@ def admin_account_delete(request, account_id):
 
 @api_view(['PATCH'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated, IsAdminUser])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def admin_account_edit(request, account_id):
     account = get_object_or_404(Account, id=account_id)
 

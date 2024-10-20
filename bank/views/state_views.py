@@ -8,13 +8,21 @@ from rest_framework.permissions import IsAuthenticated
 from ..permissions import IsAdminUserType
 
 
-@api_view(['POST'])
-def state_list_create(request):
-    serializer = StateSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response({"status": True, "data": serializer.data, "message": "State created successfully."})
-    return Response({"status": False, "message": "State creation failed.", "errors": serializer.errors})
+
+@api_view(['GET'])
+def state_list(request):
+    try:
+        search_query = request.data.get('search', '').strip()
+
+        if search_query:
+            states = State.objects.filter(name__icontains=search_query)
+        else:
+            states = State.objects.all()
+
+        serializer = StateSerializer(states, many=True)  # Set many=True for serializing multiple objects
+        return Response({"status": True, "data": serializer.data, "message": "States fetched successfully."})
+    except Exception as e:
+        return Response({"status": False, "message": f"An error occurred: {str(e)}"})
 
 
 
@@ -44,7 +52,8 @@ def city_detail(request, id):
 # @authentication_classes([TokenAuthentication])
 # @permission_classes([IsAuthenticated, IsAdminUserType])
 # def cityUpdate(request):
- 
+
+
 
 @api_view(['GET'])
 def cities_by_state(request, state_id):
@@ -56,6 +65,40 @@ def cities_by_state(request, state_id):
     cities = City.objects.filter(state=state)
     serializer = CitySerializer(cities, many=True)
     return Response({"status": True, "data": serializer.data, "message": f"Cities in state {state.name}."})
+
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])  # Restrict this API to only admin users
+def create_state(request):
+    try:
+        # Deserialize the request data
+        serializer = StateSerializer(data=request.data)
+
+        # Validate and save the state data
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": True,
+                "message": "State created successfully",
+                "data": serializer.data
+            })
+        else:
+            return Response({
+                "status": False,
+                "message": "State creation failed",
+                "errors": serializer.errors
+            })
+
+    except Exception as e:
+        return Response({
+            "status": False,
+            "message": f"An error occurred: {str(e)}"
+        })
+
+
+
 
 
 

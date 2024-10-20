@@ -194,6 +194,93 @@ def pay_credit_card_bills(request):
 
 
 
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def get_pending_credit_card_applications(request):
+    try:
+        pending_credit_cards = CreditCard.objects.filter(status='pending')
+
+        # Prepare the list of pending credit cards with user details
+        pending_credit_card_list = []
+        for idx, credit_card in enumerate(pending_credit_cards, start=1):
+            user = credit_card.user  # Access the related user object
+            
+            pending_credit_card_list.append({
+                "index": idx,
+                "id":credit_card.id,
+                "user_name": user.name,  # Assuming user model has a 'name' field
+                "user_phone": user.phone,  # Assuming user model has a 'phone' field
+                "card_number": credit_card.card_number,
+                "expiration_date": credit_card.expiration_date,
+                "cvv": credit_card.cvv,
+                "limit_use": credit_card.limit_use,
+                "created_at": credit_card.created_at.strftime('%d %b %Y, %H:%M:%S'),
+                "updated_at": credit_card.updated_at.strftime('%d %b %Y, %H:%M:%S'),
+            })
+
+        return Response({
+            "status": True,
+            "data": {
+                "pending_credit_cards": pending_credit_card_list
+            }
+        }, status=200)
+
+    except Exception as e:
+        return Response({
+            "status": False,
+            "message": f"An error occurred: {str(e)}"
+        }, status=500)
+
+
+
+@api_view(['PATCH'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def change_credit_card_status(request,credit_card_id):
+    try:
+        new_status = request.data.get('status')
+
+        # Validate the inputs
+        if not credit_card_id or not new_status:
+            return Response({
+                "status": False,
+                "message": "Credit card ID and new status are required."
+            })
+
+        # Validate the status value (assuming the allowed statuses are 'approved', 'rejected', etc.)
+        allowed_statuses = ['pending', 'approved', 'rejected', 'blocked']
+        if new_status not in allowed_statuses:
+            return Response({
+                "status": False,
+                "message": "Invalid status value."
+            })
+
+        # Get the credit card record
+        try:
+            credit_card = CreditCard.objects.get(id=credit_card_id)
+        except CreditCard.DoesNotExist:
+            return Response({
+                "status": False,
+                "message": "Credit card not found."
+            })
+
+        # Update the status of the credit card
+        credit_card.status = new_status
+        credit_card.updated_at = timezone.now()  # Update the timestamp
+        credit_card.save()
+
+        return Response({
+            "status": True,
+            "message": f"Credit card status updated to {new_status}.",
+            "new_status": new_status
+        }, status=200)
+
+    except Exception as e:
+        return Response({
+            "status": False,
+            "message": f"An error occurred: {str(e)}"
+        }, status=500)
 
 
 

@@ -11,13 +11,8 @@ from rest_framework import status
 from ..Massage import MessageHandler
 from .functions import generate_expiration_date, generate_cvv
 import random
+from .functions import generate_card_number
 
-
-def generate_card_number():
-    while True:
-        card_number = ''.join([str(random.randint(0, 9)) for _ in range(16)])
-        if not Account.objects.filter(debit_card=card_number).exists():
-            return card_number
 
 
 @api_view(['POST'])
