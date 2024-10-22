@@ -16,7 +16,7 @@ class CitySerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id','name', 'username', 'email', 'phone', 'password', 'pan_card', 'aadhar_card', 'dob', 'type','mpin','is_ban','city']
+        fields = "__all__"
         extra_kwargs = {'password': {'write_only': True},'mpin': {'write_only': True}}
 
     def create(self, validated_data):
@@ -50,7 +50,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transaction
-        fields = ['sender','type', 'receiver', 'amount', 'created_at', 'updated_at', 'date', 'status', 'sender_name', 'receiver_name','id']
+        fields = "__all__"
         read_only_fields = ['created_at', 'updated_at']
 
     def get_date(self, obj):
@@ -70,7 +70,7 @@ class CreditCardSerializer(serializers.ModelSerializer):
     class Meta:
         model = CreditCard
         # Specify the fields you want to include in the serialized data
-        fields = ['user','id','cvv', 'card_number', 'expiration_date', 'cvv', 'status', 'is_freeze', 'limit_use', 'created_at', 'updated_at']
+        fields = "__all__"
         # Exclude sensitive information like CVV if needed
         # extra_kwargs = {
         #     'cvv': {'write_only': True}  # This ensures CVV is only writable, not readable in responses

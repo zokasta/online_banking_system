@@ -14,15 +14,14 @@ import random
 from .functions import generate_card_number
 
 
-
 @api_view(['POST'])
 def signup(request):
-    # return Response({request})
     pan_regex = r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$'
     aadhar_regex = r'^\d{12}$'
     
     pan_card = request.data.get('pan_card', '').strip().upper()
     aadhar_card = request.data.get('aadhar_card', '').strip()
+
     if not re.match(pan_regex, pan_card):
         return Response({
             'status': False,
@@ -40,10 +39,15 @@ def signup(request):
     if serializer.is_valid():
         user = serializer.save()
 
+        email = user.email
+        email_username = email.split('@')[0]
+
+        upi_id = f"{email_username}@zokasta"
+
         # Additional account creation logic
         account_number = int(user.phone)
         debit_card = generate_card_number()
-        expiration_date =generate_expiration_date()
+        expiration_date = generate_expiration_date()
         cvv = generate_cvv()
 
         account = Account.objects.create(
@@ -52,14 +56,17 @@ def signup(request):
             debit_card=debit_card,
             expiration_date=expiration_date,
             cvv=cvv,
-            balance=0
+            balance=0,
+            upi_id=upi_id 
         )
         account_serializer = AccountSerializer(account)
 
+        # Generate OTP
         otp = generate_otp()
         user.otp = otp
         user.save()
 
+        # Send OTP (if needed)
         # send_otp_email(user.email, otp)
 
         return Response({
@@ -70,12 +77,13 @@ def signup(request):
             'account': account_serializer.data
         })
 
+    # Handle errors
     errors = {f"{field} field is required": next(iter(errors)) for field, errors in serializer.errors.items()}
     return Response({
         'status': False,
         'message': list(errors.values())[0]
     }, status=status.HTTP_200_OK)
-    
+
 
 
 @api_view(['POST'])

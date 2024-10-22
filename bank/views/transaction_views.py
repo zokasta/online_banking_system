@@ -19,16 +19,10 @@ from django.db import transaction as db_transaction
 from django.db.models import Q
 from .functions import get_time_range,get_six_month_transaction,get_six_month_credit_card_transactions,get_six_month_debit_card_transactions
 from ..permissions import IsAdminUserType, IsUserType
-
-
-# This will help for the Rollback on database if error Comes
-# is part of Python’s logging module, which is used to record events, such as errors or important informational messages, during the execution of your program.
-"""
-Todo: Check that if Rollback work or not
-"""
 import logging
-
 logger = logging.getLogger(__name__)
+
+
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
@@ -36,7 +30,7 @@ logger = logging.getLogger(__name__)
 def create_transaction(request):
     sender = request.user
     amount = request.data.get('amount', 0)
-    number = request.data.get('number')
+    upi_id = request.data.get('upi_id')  # This will hold the UPI ID
     mpin = request.data.get('mpin')
     transaction_type = request.data.get('type', 'DC').upper()
 
@@ -57,7 +51,6 @@ def create_transaction(request):
     try:
         # Start an atomic transaction block
         with db_transaction.atomic():
-
             # Get sender's account with locking
             sender_account = get_object_or_404(Account.objects.select_for_update(), user=sender)
 
@@ -76,29 +69,25 @@ def create_transaction(request):
                 credit_card.used += amount
                 credit_card.save()
 
-                # Find receiver account
-                receiver_account = get_object_or_404(Account.objects.select_for_update(), debit_card=number)
-                receiver_account.balance += amount
-                receiver_account.save()
+            # Try to find the receiver account by UPI ID only
+            receiver_account = get_object_or_404(Account.objects.select_for_update(), upi_id=upi_id)
 
             # Handle normal Debit Card or account balance transactions
-            else:
-                # Get the receiver's account (with locking)
-                receiver_account = get_object_or_404(Account.objects.select_for_update(), debit_card=number)
-
+            if transaction_type != 'CC':
                 if sender_account.balance < amount:
                     return Response({
                         "status": False,
                         "message": "Insufficient funds"
                     }, status=status.HTTP_400_BAD_REQUEST)
 
-                # Deduct from sender and credit to receiver
-                if sender_account.id != receiver_account.id:
-                    sender_account.balance -= amount
-                    sender_account.save()
+                # Deduct from sender account
+                sender_account.balance -= amount
+                sender_account.save()
 
-                    receiver_account.balance += amount
-                    receiver_account.save()
+            # Credit to receiver account
+            receiver_account.balance += amount
+            receiver_account.save()
+
             # Create the transaction record
             transaction_data = {
                 'sender': sender_account.id,
@@ -115,7 +104,6 @@ def create_transaction(request):
                     'status': True,
                     'transaction': serializer.data
                 }, status=status.HTTP_201_CREATED)
-            
 
             errors = {f"{field} field": next(iter(errors)) for field, errors in serializer.errors.items()}
             return Response({
@@ -130,6 +118,7 @@ def create_transaction(request):
             'status': False,
             'message': 'Transaction failed, all changes rolled back.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 @api_view(['GET'])
@@ -799,6 +788,52 @@ def rollback_transaction(request, transaction_id):
 
 
 
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def rollback_statistics(request, period):
+    try:
+        current_start, previous_start = get_time_range(period)
+        now = timezone.now()
+
+        # Get the sum of the rolled-back transactions for the current period
+        current_period_rollbacks = Transaction.objects.filter(
+            is_rolled_back=True, 
+            created_at__range=(current_start, now)
+        ).aggregate(total_amount=Sum('amount'))['total_amount'] or 0
+
+        # Get the sum of the rolled-back transactions for the previous period
+        previous_period_rollbacks = Transaction.objects.filter(
+            is_rolled_back=True, 
+            created_at__range=(previous_start, current_start)
+        ).aggregate(total_amount=Sum('amount'))['total_amount'] or 0
+
+        # Calculate growth percentage
+        if previous_period_rollbacks == 0:
+            growth_percentage = 100.0 if current_period_rollbacks > 0 else 0.0
+        else:
+            growth_percentage = ((current_period_rollbacks - previous_period_rollbacks) / previous_period_rollbacks) * 100
+
+        return Response({
+            "status": True,
+            "data": {
+                'current': current_period_rollbacks,
+                'previous': previous_period_rollbacks,
+                'growth_percentage': growth_percentage
+            }
+        }, status=status.HTTP_200_OK)
+
+    except ValueError as e:
+        return Response({
+            'status': False,
+            'message': str(e)
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        return Response({
+            'status': False,
+            'message': 'An error occurred: ' + str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 

@@ -98,10 +98,21 @@ def cities_by_state(request, state_id):
 @permission_classes([IsAuthenticated, IsAdminUserType])  # Restrict this API to only admin users
 def create_city(request):
     try:
-        # Deserialize the request data
-        serializer = CitySerializer(data=request.data)
+        # Ensure state_id is an integer before passing to the serializer
+        data = request.data.copy()
+        state_id = data.get('state_id', None)
+        
+        if state_id is not None:
+            try:
+                data['state_id'] = int(state_id)
+            except ValueError:
+                return Response({
+                    "status": False,
+                    "message": "Invalid state_id. It must be an integer."
+                })
 
-        # Validate and save the city data
+        serializer = CitySerializer(data=data)
+
         if serializer.is_valid():
             serializer.save()
             return Response({
@@ -121,4 +132,5 @@ def create_city(request):
             "status": False,
             "message": f"An error occurred: {str(e)}"
         })
+
 

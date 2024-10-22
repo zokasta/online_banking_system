@@ -11,11 +11,13 @@ class State(models.Model):
         return f"Report by {self.name}"
 
 
+
 class City(models.Model):
     name = models.CharField(max_length=50)
     state = models.ForeignKey(State, on_delete=models.CASCADE)
     def __str__(self):
         return f"Report by {self.name}"
+
 
 
 class UserManager(BaseUserManager):
@@ -41,6 +43,7 @@ class UserManager(BaseUserManager):
             raise ValueError('Superuser must have is_superuser=True.')
 
         return self.create_user(email, username, password, **extra_fields)
+
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -77,11 +80,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.email
 
 
+
 class Account(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     account_number = models.BigIntegerField(unique=True)
     debit_card = models.BigIntegerField()
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    upi_id = models.CharField(max_length=150,unique=True)
     is_frozen = models.BooleanField(default=False)
     cvv = models.CharField(
         max_length=3,
@@ -98,6 +103,7 @@ class Account(models.Model):
 
     def __str__(self):
         return f'Account {self.account_number} of user {self.user.email}'
+
 
 
 class Transaction(models.Model):
@@ -135,6 +141,7 @@ class Transaction(models.Model):
             'sender_name': sender_name,
             'receiver_name': receiver_name,
         }
+
 
 
 class CreditCard(models.Model):
@@ -183,4 +190,6 @@ class Report(models.Model):
 
     def __str__(self):
         return f'Report by {self.user.username} with status {self.status}'
+
+
 

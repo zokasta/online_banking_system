@@ -27,6 +27,7 @@ urlpatterns = [
 
     
     path('admin/user-statistics/<str:period>', admin_dashboard_card.user_growth ,name='user_statistics'),
+    path('admin/rollback-statistics/<str:period>', transaction_views.rollback_statistics ,name='user_statistics'),
     path('admin/transaction-statistics/<str:period>', transaction_views.transaction_growth ,name='total_transaction_amount'),
     path('admin/transaction-monthly-summary/', transaction_views.transaction_monthly_summary ,name='transaction_monthly_summary'),
     
