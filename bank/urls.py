@@ -47,6 +47,8 @@ urlpatterns = [
     path('admin/user/<int:user_id>/', user_views.user_update_by_admin, name='user_update_by_admin'),
     path('admin/transaction/', transaction_views.admin_transaction_history, name='admin_transaction_history'),
     path('admin/transaction/<int:transaction_id>/', transaction_views.admin_transaction_delete, name='admin_transaction_delete'),
+    path('admin/transaction/rollback/<int:transaction_id>/', transaction_views.rollback_transaction, name='admin_transaction_delete'),
+    
     path('admin/account/', account_views.admin_account_list, name='admin_account_list'),
     path('admin/account/<int:account_id>/', account_views.admin_account_delete, name='admin_account_delete'),
     path('admin/account/edit/<int:account_id>/', account_views.admin_account_edit, name='admin_account_edit'),

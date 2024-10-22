@@ -15,6 +15,7 @@ from rest_framework import status
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import timedelta
+from django.db import transaction as db_transaction
 from django.db.models import Q
 from .functions import get_time_range,get_six_month_transaction,get_six_month_credit_card_transactions,get_six_month_debit_card_transactions
 from ..permissions import IsAdminUserType, IsUserType
@@ -25,7 +26,6 @@ from ..permissions import IsAdminUserType, IsUserType
 """
 Todo: Check that if Rollback work or not
 """
-from django.db import transaction
 import logging
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ def create_transaction(request):
 
     try:
         # Start an atomic transaction block
-        with transaction.atomic():
+        with db_transaction.atomic():
 
             # Get sender's account with locking
             sender_account = get_object_or_404(Account.objects.select_for_update(), user=sender)
@@ -99,7 +99,6 @@ def create_transaction(request):
 
                     receiver_account.balance += amount
                     receiver_account.save()
-
             # Create the transaction record
             transaction_data = {
                 'sender': sender_account.id,
@@ -111,10 +110,12 @@ def create_transaction(request):
             serializer = TransactionSerializer(data=transaction_data)
             if serializer.is_valid():
                 serializer.save()
+                
                 return Response({
                     'status': True,
                     'transaction': serializer.data
                 }, status=status.HTTP_201_CREATED)
+            
 
             errors = {f"{field} field": next(iter(errors)) for field, errors in serializer.errors.items()}
             return Response({
@@ -325,6 +326,7 @@ def admin_transaction_history(request):
         sender_name = transaction.sender.user.name
         receiver_name = transaction.receiver.user.name
         amount = transaction.amount
+        is_rolled_back = transaction.is_rolled_back
         formatted_date = transaction.created_at.strftime('%d %b %Y, %H:%M:%S')
 
         transaction_history.append({
@@ -333,6 +335,7 @@ def admin_transaction_history(request):
             "sender_name": sender_name,
             "amount": amount,
             "receiver_name": receiver_name,
+            "is_rolled_back": is_rolled_back,
             "date": formatted_date,
         })
 
@@ -741,6 +744,62 @@ def debit_card_transaction_summary(request):
             'status': False,
             'message': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def rollback_transaction(request, transaction_id):
+    try:
+        transaction = get_object_or_404(Transaction, id=transaction_id, is_rolled_back=False)
+
+        with db_transaction.atomic():
+            sender_account = get_object_or_404(Account.objects.select_for_update(), id=transaction.sender.id)
+            receiver_account = get_object_or_404(Account.objects.select_for_update(), id=transaction.receiver.id)
+
+            if transaction.type == 'CC':
+                credit_card = get_object_or_404(CreditCard, user=sender_account.user, is_freeze=False)
+
+                if credit_card.used < transaction.amount:
+                    return Response({
+                        "status": False,
+                        "message": "Credit card balance insufficient for rollback."
+                    })
+
+                credit_card.used -= transaction.amount
+                credit_card.save()
+
+            if receiver_account.balance < transaction.amount:
+                return Response({
+                    "status": False,
+                    "message": "Receiver balance insufficient for rollback."
+                })
+
+            sender_account.balance += transaction.amount
+            receiver_account.balance -= transaction.amount
+
+            sender_account.save()
+            receiver_account.save()
+
+            transaction.is_rolled_back = True
+            transaction.save()
+
+            return Response({
+                'status': True,
+                'message': 'Transaction successfully rolled back.'
+            })
+
+    except Exception as e:
+        logger.error(f"Rollback error: {str(e)}")
+        return Response({
+            'status': False,
+            'message': 'Transaction rollback failed, changes were not applied.'
+        })
+
+
+
+
 
 
 
