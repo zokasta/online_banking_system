@@ -28,10 +28,15 @@ urlpatterns = [
     
     path('admin/user-statistics/<str:period>', admin_dashboard_card.user_growth ,name='user_statistics'),
     path('admin/rollback-statistics/<str:period>', transaction_views.rollback_statistics ,name='user_statistics'),
+    path('admin/credit-card-statistics/<str:period>', credit_card_views.credit_card_statistics ,name='credit_card_statistics'),
     path('admin/transaction-statistics/<str:period>', transaction_views.transaction_growth ,name='total_transaction_amount'),
     path('admin/transaction-monthly-summary/', transaction_views.transaction_monthly_summary ,name='transaction_monthly_summary'),
+    path('admin/transaction-monthly-summary-credit-card/', transaction_views.transaction_monthly_summary_for_credit_card ,name='transaction_monthly_summary_for_credit_card'),
+    path('admin/transaction-monthly-summary-debit-card/', transaction_views.transaction_monthly_summary_for_debit_card ,name='transaction_monthly_summary_for_debit_card'),
+    path('admin/transaction-monthly-summary-rolled-back/', transaction_views.transaction_monthly_summary_for_rolled_back ,name='transaction_monthly_summary_for_rolled_back'),
     
     
+    # 
     path('user/transaction-statistics-self-debit-card/<str:period>/', transaction_views.debit_card_transaction_sum_for_user ,name='total_transaction_amount'),
     path('user/transaction-statistics-self-credit-card/<str:period>/', transaction_views.credit_card_transaction_count_for_user ,name='total_transaction_amount'),
 

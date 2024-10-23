@@ -9,7 +9,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from ..models import Account, Transaction, User, CreditCard
+from ..models import Account, Transaction, CreditCard
 from ..serializers import TransactionSerializer, AccountSerializer
 from rest_framework import status
 from django.db.models import Sum
@@ -17,7 +17,8 @@ from django.utils import timezone
 from datetime import timedelta
 from django.db import transaction as db_transaction
 from django.db.models import Q
-from .functions import get_time_range,get_six_month_transaction,get_six_month_credit_card_transactions,get_six_month_debit_card_transactions
+from .functions import get_time_range,get_six_month_transaction,get_six_month_credit_card_transactions,get_six_month_debit_card_transactions, get_six_month_credit_card_transactions_for_admin
+from .functions import get_six_month_credit_card_transactions_for_admin,get_six_month_rolled_back_transactions
 from ..permissions import IsAdminUserType, IsUserType
 import logging
 logger = logging.getLogger(__name__)
@@ -834,6 +835,73 @@ def rollback_statistics(request, period):
             'status': False,
             'message': 'An error occurred: ' + str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def transaction_monthly_summary_for_credit_card(request):
+    try:
+        month_names, transaction_sums = get_six_month_credit_card_transactions_for_admin(type = Transaction.TransactionType.CREDIT_CARD)
+
+        return Response({
+            'status': True,
+            'y-axis': month_names,
+            'x-axis': transaction_sums,
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            'status': False,
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def transaction_monthly_summary_for_debit_card(request):
+    try:
+        month_names, transaction_sums = get_six_month_credit_card_transactions_for_admin(type = Transaction.TransactionType.DEBIT_CARD)
+
+        return Response({
+            'status': True,
+            'y-axis': month_names,
+            'x-axis': transaction_sums,
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            'status': False,
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def transaction_monthly_summary_for_rolled_back(request):
+    try:
+        month_names, transaction_sums = get_six_month_rolled_back_transactions()
+
+        return Response({
+            'status': True,
+            'y-axis': month_names,
+            'x-axis': transaction_sums,
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            'status': False,
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 

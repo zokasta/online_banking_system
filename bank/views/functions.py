@@ -67,6 +67,21 @@ def get_six_month_transaction():
     return month_names, transaction_sums
 
 
+def get_six_month_credit_card_transactions_for_admin(type):
+    month_names, months = get_last_six_months()  # Retrieve last 6 months' start and end dates
+    transaction_sums = []
+
+    for start, end in months:
+        # Filter only transactions of type 'CREDIT_CARD' within the date range
+        total = Transaction.objects.filter(
+            created_at__range=(start, end),
+            type=type # Filter by credit card type
+        ).aggregate(Sum('amount'))['amount__sum'] or 0
+        transaction_sums.append(total)
+
+    return month_names, transaction_sums
+
+
 def generate_expiration_date(years_from_now=3):
     now = datetime.now()
     expiration_date = now + relativedelta(years=years_from_now)
@@ -168,6 +183,22 @@ def generate_card_number(prefix="4", length=16):
     
     # Return a unique card number
     return card_number
+
+
+def get_six_month_rolled_back_transactions():
+    month_names, months = get_last_six_months()  # Retrieve last 6 months' start and end dates
+    transaction_sums = []
+
+    for start, end in months:
+        # Filter only rolled-back transactions within the date range
+        total = Transaction.objects.filter(
+            created_at__range=(start, end),
+            is_rolled_back=True  # Filter by rolled-back transactions
+        ).aggregate(Sum('amount'))['amount__sum'] or 0
+        transaction_sums.append(total)
+
+    return month_names, transaction_sums
+
 
 
 

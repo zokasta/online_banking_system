@@ -4,8 +4,11 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from ..models import CreditCard, Account
-from .functions import generate_card_number, generate_expiration_date, generate_cvv
+from .functions import generate_card_number, generate_expiration_date, generate_cvv, get_time_range
 from ..permissions import IsAdminUserType, IsUserType
+from rest_framework import status
+from django.db.models import Sum, Count
+
 
 
 # @csrf_exempt  
@@ -281,6 +284,55 @@ def change_credit_card_status(request,credit_card_id):
             "status": False,
             "message": f"An error occurred: {str(e)}"
         }, status=500)
+
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def credit_card_statistics(request, period):
+    try:
+        # Get current and previous time ranges based on the provided period
+        current_start, previous_start = get_time_range(period)
+        now = timezone.now()
+
+        # Current period statistics: Count how many credit cards were created
+        current_period_stats = CreditCard.objects.filter(
+            created_at__range=(current_start, now)
+        ).aggregate(total_created=Count('id'))
+
+        # Previous period statistics: Count how many credit cards were created
+        previous_period_stats = CreditCard.objects.filter(
+            created_at__range=(previous_start, current_start)
+        ).aggregate(total_created=Count('id'))
+
+        # Calculate the growth percentage for the number of created credit cards
+        if previous_period_stats['total_created'] == 0:
+            growth_percentage = 100.0 if current_period_stats['total_created'] > 0 else 0.0
+        else:
+            growth_percentage = ((current_period_stats['total_created'] - previous_period_stats['total_created']) / previous_period_stats['total_created']) * 100
+
+        return Response({
+            "status": True,
+            "data": {
+                'current':current_period_stats['total_created'],
+                'previous': previous_period_stats['total_created'],
+                'growth_percentage': growth_percentage
+            }
+        }, status=status.HTTP_200_OK)
+
+    except ValueError as e:
+        return Response({
+            'status': False,
+            'message': str(e)
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        return Response({
+            'status': False,
+            'message': 'An error occurred: ' + str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 
