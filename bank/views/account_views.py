@@ -50,7 +50,6 @@ def admin_account_list(request):
 
 
 
-
 @api_view(['DELETE'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated, IsAdminUserType])
@@ -105,6 +104,42 @@ def admin_account_edit(request, account_id):
             "status": False,
             "message": f"An error occurred: {str(e)}"
         })
+
+
+
+
+
+@api_view(['PATCH'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def toggle_account_freeze(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
+
+    is_frozen = request.data.get('status', None)
+    if is_frozen == 'none':
+        is_frozen = False
+    elif is_frozen == 'freeze':
+        is_frozen = True
+    else:
+        return Response({
+            'status': False,
+            'message': 'Please provide a valid status value (none or freeze).'
+        }, status=status.HTTP_400_BAD_REQUEST)  
+
+    if is_frozen is not None:
+        account.is_frozen = is_frozen
+        account.save()
+
+        status_text = 'frozen' if is_frozen else 'unfrozen'
+        return Response({
+            'status': True,
+            'message': f'Account has been {status_text}.'
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response({
+            'status': False,
+            'message': 'Please provide a valid is_frozen value (True or False).'
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 

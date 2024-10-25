@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from ..permissions import IsAdminUserType
-
+from rest_framework import status
 
 
 @api_view(['GET'])
@@ -96,6 +96,79 @@ def create_state(request):
             "status": False,
             "message": f"An error occurred: {str(e)}"
         })
+
+
+
+@api_view(['PATCH'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def edit_state(request, id):
+    try:
+        # Fetch the state object based on the provided ID
+        state = State.objects.get(id=id)
+
+        # Deserialize the request data and apply partial updates
+        serializer = StateSerializer(state, data=request.data, partial=True)
+
+        # Validate the data and save the updated state
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": True,
+                "message": "State updated successfully.",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "status": False,
+                "message": "State update failed.",
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+    # If the state does not exist, return an error response
+    except State.DoesNotExist:
+        return Response({
+            "status": False,
+            "message": "State not found."
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    # Handle any other exceptions
+    except Exception as e:
+        return Response({
+            "status": False,
+            "message": f"An error occurred: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['DELETE'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def delete_state(request, id):
+    try:
+        # Fetch the state object based on the provided ID
+        state = State.objects.get(id=id)
+        
+        # Delete the state object
+        state.delete()
+        return Response({
+            "status": True,
+            "message": "State deleted successfully."
+        }, status=status.HTTP_200_OK)
+
+    # If the state does not exist, return an error response
+    except State.DoesNotExist:
+        return Response({
+            "status": False,
+            "message": "State not found."
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    # Handle any other exceptions
+    except Exception as e:
+        return Response({
+            "status": False,
+            "message": f"An error occurred: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 

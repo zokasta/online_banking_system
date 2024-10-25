@@ -51,25 +51,21 @@ def apply_for_credit_card(request):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated, IsAdminUserType])
 def get_credit_card_list(request):
-    user = request.user  # Get the authenticated user
 
-    # Get the search parameter from the query string, default is empty string
     search = request.query_params.get('search', '').strip()
 
-    # Get all credit cards for the user
-    credit_cards = CreditCard.objects.filter(user=user)
+    credit_cards = CreditCard.objects.filter(status = 'confirm')
 
-    # Filter credit cards based on the search query
     if search:
         credit_cards = credit_cards.filter(
-            card_number__icontains=search  # You can adjust this to search by other fields if needed
+            card_number__icontains=search
         )
 
-    # Prepare the list of credit cards with an index and formatted details
     credit_card_list = []
     for idx, credit_card in enumerate(credit_cards, start=1):
         credit_card_list.append({
             "index": idx,
+            "id":credit_card.id,
             "card_number": credit_card.card_number,
             "expiration_date": credit_card.expiration_date,
             "cvv": credit_card.cvv,
@@ -243,15 +239,13 @@ def get_pending_credit_card_applications(request):
 def change_credit_card_status(request,credit_card_id):
     try:
         new_status = request.data.get('status')
-
-        # Validate the inputs
+        
         if not credit_card_id or not new_status:
             return Response({
                 "status": False,
                 "message": "Credit card ID and new status are required."
             })
-
-        # Validate the status value (assuming the allowed statuses are 'approved', 'rejected', etc.)
+        
         allowed_statuses = ['pending', 'approved', 'rejected', 'blocked']
         if new_status not in allowed_statuses:
             return Response({
@@ -332,6 +326,134 @@ def credit_card_statistics(request, period):
             'status': False,
             'message': 'An error occurred: ' + str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+@api_view(['PATCH'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def edit_credit_card_details(request, credit_card_id):
+    try:
+        # Fetch the user
+        user = request.user
+        
+        # Retrieve the credit card by its ID
+        try:
+            credit_card = CreditCard.objects.get(id=credit_card_id, user=user)
+        except CreditCard.DoesNotExist:
+            return Response({
+                "status": False,
+                "message": "Credit card not found or you do not have permission to edit this card."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Get the updated fields from the request data
+        expiration_date = request.data.get('expiration_date')
+        limit_use = request.data.get('limit_use')
+        limit_use = int(limit_use)
+        card_number = request.data.get('card_number')
+
+        # Validate and update the fields if they are provided
+        if expiration_date:
+            try:
+                credit_card.expiration_date = expiration_date  # Make sure the date format is correct
+            except ValueError:
+                return Response({
+                    "status": False,
+                    "message": "Invalid expiration date format."
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if limit_use:
+            if isinstance(limit_use, int) and limit_use > 0:
+                credit_card.limit_use = limit_use
+            else:
+                return Response({
+                    "status": False,
+                    "message": "Limit must be a positive integer."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        if card_number:
+            if CreditCard.objects.filter(card_number=card_number).exclude(id=credit_card.id).exists():
+                return Response({
+                    "status": False,
+                    "message": "This card number is already in use."
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            credit_card.card_number = card_number
+        # Save the updated credit card details
+        credit_card.updated_at = timezone.now()  # Update the timestamp
+        credit_card.save()
+
+        return Response({
+            "status": True,
+            "message": "Credit card details updated successfully.",
+            "data": {
+                "card_number": credit_card.card_number,
+                "expiration_date": credit_card.expiration_date,
+                "limit_use": credit_card.limit_use,
+                "updated_at": credit_card.updated_at.strftime('%d %b %Y, %H:%M:%S'),
+            }
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            "status": False,
+            "message": f"An error occurred: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['PATCH'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def toggle_credit_card(request,credit_card_id):
+    try:
+        user = request.user
+        freeze_status = request.data.get('status', None)
+        
+        if freeze_status == 'none':
+            freeze_status = False
+        else:
+            freeze_status = True
+
+        if freeze_status is None:
+            return Response({
+                "status": False,
+                "message": "Freeze status is required (True or False)."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            credit_card = CreditCard.objects.get(id= credit_card_id)
+        except CreditCard.DoesNotExist:
+            return Response({
+                "status": False,
+                "message": "Credit card not found."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        if credit_card.is_freeze == freeze_status:
+            return Response({
+                "status": False,
+                "message": f"Credit card is already {'frozen' if freeze_status else 'unfrozen'}."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        credit_card.is_freeze = freeze_status
+        credit_card.updated_at = timezone.now()
+        credit_card.save()
+
+        return Response({
+            "status": True,
+            "message": f"Credit card has been {'frozen' if freeze_status else 'unfrozen'} successfully.",
+            "is_freeze": credit_card.is_freeze
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            "status": False,
+            "message": f"An error occurred: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
 
 
 

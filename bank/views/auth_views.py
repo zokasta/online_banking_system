@@ -10,7 +10,6 @@ from bank.utils import generate_otp, send_otp_email
 from rest_framework import status
 from ..Massage import MessageHandler
 from .functions import generate_expiration_date, generate_cvv
-import random
 from .functions import generate_card_number
 
 
@@ -149,6 +148,7 @@ def adminLogin(request):
     }, status=status.HTTP_200_OK)
 
 
+
 @api_view(['POST'])
 def verify_otp(request):
     user = get_object_or_404(User, username=request.data['username'])
@@ -194,6 +194,7 @@ def verify_otp(request):
             "status": False,
             "message": "OTP is incorrect"
         }, status=status.HTTP_200_OK)
+
 
 
 @api_view(['POST'])

@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from ..permissions import IsAdminUserType
+from rest_framework import status
 
 
 @api_view(['POST'])
@@ -43,26 +44,24 @@ def city_detail(request, id):
 @api_view(['GET'])
 def city_list(request):
     try:
-        # Get the search parameter from the request, default to an empty string if not provided
         search_query = request.data.get('search', '').strip()
 
-        # Fetch all cities or filter by city name or state name based on the search query
         if search_query:
             city = City.objects.filter(
                 name__icontains=search_query
             ) | City.objects.filter(
-                state__name__icontains=search_query  # Search for cities where the state's name contains the search query
+                state__name__icontains=search_query
             )
         else:
             city = City.objects.all()
 
-        # Serialize the city data with the related state info, adding an index
-        serializer = CitySerializer(city, many=True)  # many=True is important to serialize multiple objects
+        serializer = CitySerializer(city, many=True)
         city_data = [
             {
-                "index": idx + 1,  # Add index starting from 1
+                "index": idx + 1,
                 "city_name": c.name,
-                "state_name": c.state.name,  # Access the related state's name
+                "id": c.id,
+                "state_name": c.state.name,
             } for idx, c in enumerate(city)
         ]
 
@@ -71,13 +70,6 @@ def city_list(request):
     except Exception as e:
         return Response({"status": False, "message": f"An error occurred: {str(e)}"})
 
-
-
-# @api_view(['PUT'])
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated, IsAdminUserType])
-# def cityUpdate(request):
- 
 
 
 @api_view(['GET'])
@@ -95,10 +87,9 @@ def cities_by_state(request, state_id):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated, IsAdminUserType])  # Restrict this API to only admin users
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def create_city(request):
     try:
-        # Ensure state_id is an integer before passing to the serializer
         data = request.data.copy()
         state_id = data.get('state_id', None)
         
@@ -132,5 +123,79 @@ def create_city(request):
             "status": False,
             "message": f"An error occurred: {str(e)}"
         })
+
+
+
+@api_view(['DELETE'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def city_delete(request, id):
+    try:
+        city = City.objects.get(id=id)
+        city.delete()
+        return Response({
+            "status": True,
+            "message": "City deleted successfully."
+        }, status=status.HTTP_200_OK)
+    except City.DoesNotExist:
+        return Response({
+            "status": False,
+            "message": "City not found."
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            "status": False,
+            "message": f"An error occurred: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['PATCH'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUserType])
+def city_edit(request, id):
+    try:
+        city = City.objects.get(id=id)
+
+        if 'city_name' in request.data:
+            city.name = request.data['city_name']
+
+        state_id = request.data.get('state_name')
+        if state_id:
+            try:
+                state = State.objects.get(id=state_id)
+                city.state = state 
+            except State.DoesNotExist:
+                return Response({
+                    "status": False,
+                    "message": "State not found."
+                }, status=status.HTTP_404_NOT_FOUND)
+
+        city.save()
+
+        serializer = CitySerializer(city)
+
+        return Response({
+            "status": True,
+            "message": "City updated successfully.",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    except City.DoesNotExist:
+        return Response({
+            "status": False,
+            "message": "City not found."
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            "status": False,
+            "message": f"An error occurred: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
 
 

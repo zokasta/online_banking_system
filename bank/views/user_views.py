@@ -165,3 +165,36 @@ def user_update_by_admin(request, user_id):
     })
 
 
+
+@api_view(['PATCH'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def toggle_user_ban(request, user_id):
+    # Get the user by ID or return 404 if not found
+    user = get_object_or_404(User, id=user_id)
+
+    # Check for 'is_ban' field in the request data
+    is_ban = request.data.get('status', 'none')
+    if is_ban == 'none':
+        is_ban = False
+    elif is_ban == 'ban':
+        is_ban = True
+
+    if is_ban is not None:
+        # Update the user's is_ban status
+        user.is_ban = is_ban
+        user.save()
+
+        status_text = 'banned' if is_ban else 'unbanned'
+        return Response({
+            'status': True,
+            'message': f'User has been {status_text}.'
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response({
+            'status': False,
+            'message': 'Please provide a valid is_ban value (True or False).'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+

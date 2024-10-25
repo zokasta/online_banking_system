@@ -749,13 +749,13 @@ def rollback_transaction(request, transaction_id):
             receiver_account = get_object_or_404(Account.objects.select_for_update(), id=transaction.receiver.id)
 
             if transaction.type == 'CC':
-                credit_card = get_object_or_404(CreditCard, user=sender_account.user, is_freeze=False)
+                credit_card = get_object_or_404(CreditCard, user=sender_account.user)
 
-                if credit_card.used < transaction.amount:
-                    return Response({
-                        "status": False,
-                        "message": "Credit card balance insufficient for rollback."
-                    })
+                # if credit_card.used < transaction.amount:
+                #     return Response({
+                #         "status": False,
+                #         "message": "Credit card balance insufficient for rollback."
+                #     })
 
                 credit_card.used -= transaction.amount
                 credit_card.save()

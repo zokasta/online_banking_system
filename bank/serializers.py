@@ -6,12 +6,14 @@ from bank.models import User, Account, Transaction , City, State, CreditCard, Re
 class StateSerializer(serializers.ModelSerializer):
     class Meta:
         model = State
-        fields = ['id', 'name']
+        fields = "__all__"
+
 
 class CitySerializer(serializers.ModelSerializer):
     class Meta:
         model = City
-        fields = ['id', 'name', 'state']
+        fields = "__all__"
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -36,11 +38,13 @@ class UserSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
+
 class AccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
         fields = "__all__"
         read_only_fields = ['account_number', 'created_at', 'updated_at']
+
 
 class TransactionSerializer(serializers.ModelSerializer):
     date = serializers.SerializerMethodField()
@@ -86,8 +90,11 @@ class CreditCardSerializer(serializers.ModelSerializer):
         # Optionally, you can add more logic to check if the date is in the future
         return value
 
+
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
         fields = ['id', 'user', 'message', 'status', 'created_at', 'updated_at']
         read_only_fields = ['id', 'status', 'created_at', 'updated_at']  
+
+
