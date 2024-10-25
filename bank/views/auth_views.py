@@ -87,7 +87,13 @@ def signup(request):
 
 @api_view(['POST'])
 def login(request):
-    user = get_object_or_404(User, username=request.data['username'])
+    user = User.objects.filter(username = request.data['username']).first()
+    print(user)
+    if not user:
+        return Response({
+            "status": False,
+            "message": "Username or password is wrong"
+        })
     if not user.check_password(request.data['password']):
         return Response({
             "status": False,

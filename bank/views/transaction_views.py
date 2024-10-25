@@ -71,7 +71,7 @@ def create_transaction(request):
                 credit_card.save()
 
             # Try to find the receiver account by UPI ID only
-            receiver_account = get_object_or_404(Account.objects.select_for_update(), upi_id=upi_id)
+            receiver_account = Account.objects.filter(upi_id=upi_id).first()
 
             # Handle normal Debit Card or account balance transactions
             if transaction_type != 'CC':

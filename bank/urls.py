@@ -1,4 +1,11 @@
-# urls.py
+"""
+Todo: We should make one file for frontend where all api name with url are save so when we url change then we can able to change name easily.
+?: But we should do after the completion of the project
+
+
+
+"""
+
 
 from django.urls import path
 from .views import credit_card_views,account_views,user_views,transaction_views,auth_views, report_views
@@ -32,7 +39,7 @@ urlpatterns = [
     path('user/account/freeze/<int:account_id>/', account_views.toggle_account_freeze, name='toggle_account_freeze'),
 
 
-    # toggle_account_freeze
+    # Admin API, Total API:- 8
     path('admin/user-statistics/<str:period>', admin_dashboard_card.user_growth ,name='user_statistics'),
     path('admin/rollback-statistics/<str:period>', transaction_views.rollback_statistics ,name='user_statistics'),
     path('admin/credit-card-statistics/<str:period>', credit_card_views.credit_card_statistics ,name='credit_card_statistics'),
@@ -66,7 +73,7 @@ urlpatterns = [
     path('admin/account/edit/<int:account_id>/', account_views.admin_account_edit, name='admin_account_edit'),
 
     
-    # State API Total API:- 3
+    # State API Total API:- 5
     path('states/create/', state_views.create_state, name='state-list-create'),
     path('states/update/<int:id>/', state_views.edit_state, name='state-list-create'),
     path('states/delete/<int:id>/', state_views.delete_state, name='state-list-create'),
@@ -85,6 +92,7 @@ urlpatterns = [
 
     # Credit Card API, Total API:- 8
     path('credit-card/apply/', credit_card_views.apply_for_credit_card, name='generate_card_number'),
+    path('credit-card/check/', credit_card_views.check_credit_card, name='generate_card_number'),
     path('credit-card/edit/<int:credit_card_id>/', credit_card_views.edit_credit_card_details, name='edit_credit_card_details'),
     path('credit-card/list/', credit_card_views.get_credit_card_list, name='get_credit_card_list'),
     path('credit-card/list/pending/', credit_card_views.get_pending_credit_card_applications, name='get_pending_credit_card_applications'),
@@ -100,4 +108,3 @@ urlpatterns = [
     
 
 ]
-# 

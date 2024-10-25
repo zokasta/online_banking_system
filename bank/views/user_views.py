@@ -7,7 +7,7 @@ from bank.models import User
 from bank.serializers import UserSerializer
 from rest_framework import status
 from django.db.models import Q
-
+from ..permissions import IsAdminUserType, IsUserType
 
 
 @api_view(['GET'])
@@ -39,7 +39,7 @@ def get_user_by_id(request, user_id):
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminUserType])
 def get_all_users(request):
     # Get the search query from request parameters
     search_query = request.query_params.get('search', '')
