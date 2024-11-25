@@ -40,12 +40,6 @@ def city_detail(request, id):
 
 
 
-# @api_view(['PUT'])
-# @authentication_classes([TokenAuthentication])
-# @permission_classes([IsAuthenticated, IsAdminUserType])
-# def cityUpdate(request):
- 
-
 @api_view(['GET'])
 def cities_by_state(request, state_id):
     try:

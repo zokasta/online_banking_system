@@ -31,18 +31,16 @@ logger = logging.getLogger(__name__)
 def create_transaction(request):
     sender = request.user
     amount = request.data.get('amount', 0)
-    upi_id = request.data.get('upi_id')  # This will hold the UPI ID
+    upi_id = request.data.get('upi_id')
     mpin = request.data.get('mpin')
     transaction_type = request.data.get('type', 'DC').upper()
 
-    # Validation for amount
     if not isinstance(amount, (int, float)) or amount <= 0:
         return Response({
             "status": False,
             "message": "Invalid amount. Amount must be greater than zero."
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    # Check MPIN
     if sender.mpin != mpin:
         return Response({
             "status": False,
@@ -50,12 +48,9 @@ def create_transaction(request):
         }, status=status.HTTP_401_UNAUTHORIZED)
 
     try:
-        # Start an atomic transaction block
         with db_transaction.atomic():
-            # Get sender's account with locking
             sender_account = get_object_or_404(Account.objects.select_for_update(), user=sender)
 
-            # Handle Credit Card Transaction
             if transaction_type == 'CC':
                 credit_card = get_object_or_404(CreditCard, user=sender, is_freeze=False)
                 available_credit = credit_card.limit_use - credit_card.used
@@ -66,14 +61,11 @@ def create_transaction(request):
                         "message": "Insufficient credit card balance"
                     }, status=status.HTTP_400_BAD_REQUEST)
 
-                # Deduct from credit card used balance
                 credit_card.used += amount
                 credit_card.save()
 
-            # Try to find the receiver account by UPI ID only
             receiver_account = Account.objects.filter(upi_id=upi_id).first()
 
-            # Handle normal Debit Card or account balance transactions
             if transaction_type != 'CC':
                 if sender_account.balance < amount:
                     return Response({
@@ -81,15 +73,12 @@ def create_transaction(request):
                         "message": "Insufficient funds"
                     }, status=status.HTTP_400_BAD_REQUEST)
 
-                # Deduct from sender account
                 sender_account.balance -= amount
                 sender_account.save()
 
-            # Credit to receiver account
             receiver_account.balance += amount
             receiver_account.save()
 
-            # Create the transaction record
             transaction_data = {
                 'sender': sender_account.id,
                 'receiver': receiver_account.id,
@@ -114,7 +103,6 @@ def create_transaction(request):
 
     except Exception as e:
         logger.error(f"Transaction error: {str(e)}")
-        # Automatic rollback will happen due to transaction.atomic()
         return Response({
             'status': False,
             'message': 'Transaction failed, all changes rolled back.'
@@ -143,55 +131,42 @@ def transaction_history(request):
     account = get_object_or_404(Account, user=request.user)
     search = request.query_params.get('search', '').strip()
 
-    # Get both sent and received transactions
     sent_transactions = Transaction.objects.filter(sender=account,type=type)
     received_transactions = Transaction.objects.filter(receiver=account, type=type)
 
-    # Use a dictionary to avoid duplicates
     transactions_dict = {}
 
-    # Add sent transactions
     for transaction in sent_transactions:
         transactions_dict[transaction.pk] = {
             "transaction": transaction,
-            # Set status as 'Debit' if user is the sender
             "status_info": 'Debit'
         }
 
-    # Add received transactions, checking for duplicates
     for transaction in received_transactions:
         if transaction.pk not in transactions_dict:
             transactions_dict[transaction.pk] = {
                 "transaction": transaction,
-                # Set status as 'Credit' if user is the receiver
                 "status_info": 'Credit'
             }
         else:
-            # If already present, we can assume the status was set correctly in the sent transactions loop
             transactions_dict[transaction.pk]["status_info"] = 'Self Transfer'
 
-    # Convert the dictionary to a list of transactions
     transactions = list(transactions_dict.values())
 
-    # Sort by timestamp
     transactions.sort(key=lambda t: t["transaction"].created_at, reverse=True)
 
-    # Filter transactions based on the search term
     filtered_transactions = []
     for idx, trans_dict in enumerate(transactions, start=1):
         transaction = trans_dict["transaction"]
         status_info = trans_dict["status_info"]
 
-        # Determine the name of the other party
         if transaction.sender == account:
             name = transaction.receiver.user.name
         else:
             name = transaction.sender.user.name
 
-        # Format timestamp
         formatted_timestamp = transaction.created_at.strftime('%d %b %Y, %H:%M:%S')
 
-        # Check if search term matches name, timestamp, amount, or status
         if (
             search.lower() in name.lower() or
             search in formatted_timestamp or
@@ -218,17 +193,13 @@ def transaction_history(request):
 @permission_classes([IsAuthenticated, IsUserType])
 def show_transaction(request):
     user = request.user
-    # Get the user's account
     account = get_object_or_404(Account, user=user)
 
-    # Get the search keyword from the request data
     search_keyword = request.data.get('search', '')
 
-    # Query for transactions where the user is either sender or receiver
     transactions = Transaction.objects.filter(sender=account) | Transaction.objects.filter(receiver=account)
 
     
-    # Apply search filter
     if search_keyword:
         transactions = transactions.filter(
             sender__user__name__icontains=search_keyword) | transactions.filter(
@@ -236,7 +207,6 @@ def show_transaction(request):
             amount__icontains=search_keyword) | transactions.filter(
             created_at__icontains=search_keyword)
 
-    # Serialize the transaction data
     serializer = TransactionSerializer(transactions, many=True)
 
     return Response({
@@ -250,29 +220,26 @@ def show_transaction(request):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated, IsAdminUserType])
 def transaction_count(request):
-    period = request.query_params.get('time', 'all')  # Get the time period from query parameters
+    period = request.query_params.get('time', 'all')
 
-    # Get the current time
     now = timezone.now()
 
-    # Calculate the start date based on the period
     if period == 'day':
         start_date = now - timedelta(days=1)
     elif period == 'week':
         start_date = now - timedelta(weeks=1)
     elif period == 'month':
-        start_date = now - timedelta(weeks=4)  # Approximate month as 4 weeks
+        start_date = now - timedelta(weeks=4)
     elif period == 'year':
-        start_date = now - timedelta(days=365)  # Approximate year as 365 days
+        start_date = now - timedelta(days=365)
     elif period == 'all':
-        start_date = None  # No filtering for 'all'
+        start_date = None
     else:
         return Response({
             "status": False,
             "message": "Invalid time period. Choose from 'day', 'week', 'month', 'year', 'all'."
         })
 
-    # Filter transactions based on the start_date
     if start_date:
         transactions = Transaction.objects.filter(created_at=start_date)
     else:
@@ -296,10 +263,8 @@ def transaction_count(request):
 def admin_transaction_history(request):
     search = request.query_params.get('search', '').strip()
 
-    # Fetch all transactions
     transactions = Transaction.objects.all()
 
-    # Filter transactions based on search term
     if search:
         transactions = transactions.filter(
             sender__user__name__icontains=search) | transactions.filter(
@@ -307,10 +272,8 @@ def admin_transaction_history(request):
             amount__icontains=search) | transactions.filter(
             created_at__icontains=search)
 
-    # Sort transactions by created_at timestamp
     transactions = transactions.order_by('-created_at')
 
-    # Prepare response data
     transaction_history = []
     for idx, transaction in enumerate(transactions, start=1):
         sender_name = transaction.sender.user.name
@@ -320,7 +283,7 @@ def admin_transaction_history(request):
         formatted_date = transaction.created_at.strftime('%d %b %Y, %H:%M:%S')
 
         transaction_history.append({
-            "id": transaction.id,  # Include transaction ID
+            "id": transaction.id,
             "index": idx,
             "sender_name": sender_name,
             "amount": amount,
@@ -340,10 +303,8 @@ def admin_transaction_history(request):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated, IsAdminUserType])
 def admin_transaction_delete(request, transaction_id):
-    # Fetch the transaction by its ID
     transaction = get_object_or_404(Transaction, id=transaction_id)
 
-    # Delete the transaction
     transaction.delete()
 
     return Response({
@@ -427,24 +388,23 @@ def debit_card_transaction_sum(request, period):
             start_date = now - timedelta(weeks=1)
             previous_start_date = now - timedelta(weeks=2)
         elif period == 'month':
-            start_date = now - timedelta(weeks=4)  # Approximate month as 4 weeks
-            previous_start_date = now - timedelta(weeks=8)  # Approximate previous month as 8 weeks
+            start_date = now - timedelta(weeks=4)
+            previous_start_date = now - timedelta(weeks=8)
         elif period == 'year':
             start_date = now - timedelta(days=365)
-            previous_start_date = now - timedelta(days=730)  # Approximate previous year as 730 days
+            previous_start_date = now - timedelta(days=730)
         elif period == 'all':
             start_date = None
             previous_start_date = None
         else:
             return None, None
 
-        # Filter transactions based on the start_date and type (debit card)
         if start_date:
             current_transactions = Transaction.objects.filter(created_at__gte=start_date, type=Transaction.TransactionType.DEBIT_CARD)
             previous_transactions = Transaction.objects.filter(created_at__gte=previous_start_date, created_at__lt=start_date, type=Transaction.TransactionType.DEBIT_CARD)
         else:
             current_transactions = Transaction.objects.filter(type=Transaction.TransactionType.DEBIT_CARD)
-            previous_transactions = Transaction.objects.none()  # No previous data if period is 'all'
+            previous_transactions = Transaction.objects.none()
 
         current_sum = current_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
         previous_sum = previous_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
@@ -459,7 +419,6 @@ def debit_card_transaction_sum(request, period):
             "message": "Invalid time period. Choose from 'day', 'week', 'month', 'year', 'all'."
         }, status=400)
 
-    # Calculate growth percentage
     if previous_sum == 0:
         growth_percentage = 0 if current_sum == 0 else 100
     else:
@@ -490,24 +449,23 @@ def credit_card_transaction_count(request, period):
             start_date = now - timedelta(weeks=1)
             previous_start_date = now - timedelta(weeks=2)
         elif period == 'month':
-            start_date = now - timedelta(weeks=4)  # Approximate month as 4 weeks
-            previous_start_date = now - timedelta(weeks=8)  # Approximate previous month as 8 weeks
+            start_date = now - timedelta(weeks=4)
+            previous_start_date = now - timedelta(weeks=8)
         elif period == 'year':
             start_date = now - timedelta(days=365)
-            previous_start_date = now - timedelta(days=730)  # Approximate previous year as 730 days
+            previous_start_date = now - timedelta(days=730)
         elif period == 'all':
             start_date = None
             previous_start_date = None
         else:
             return None, None
 
-        # Filter transactions based on the start_date and type (credit card)
         if start_date:
             current_transactions = Transaction.objects.filter(created_at__gte=start_date, type=Transaction.TransactionType.CREDIT_CARD)
             previous_transactions = Transaction.objects.filter(created_at__gte=previous_start_date, created_at__lt=start_date, type=Transaction.TransactionType.CREDIT_CARD)
         else:
             current_transactions = Transaction.objects.filter(type=Transaction.TransactionType.CREDIT_CARD)
-            previous_transactions = Transaction.objects.none()  # No previous data if period is 'all'
+            previous_transactions = Transaction.objects.none()
 
         current_sum = current_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
         previous_sum = previous_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
@@ -522,7 +480,6 @@ def credit_card_transaction_count(request, period):
             "message": "Invalid time period. Choose from 'day', 'week', 'month', 'year', 'all'."
         }, status=400)
 
-    # Calculate growth percentage
     if previous_sum == 0:
         growth_percentage = 0 if current_sum == 0 else 100
     else:
@@ -554,18 +511,17 @@ def debit_card_transaction_sum_for_user(request, period):
             start_date = now - timedelta(weeks=1)
             previous_start_date = now - timedelta(weeks=2)
         elif period == 'month':
-            start_date = now - timedelta(weeks=4)  # Approximate month as 4 weeks
-            previous_start_date = now - timedelta(weeks=8)  # Approximate previous month as 8 weeks
+            start_date = now - timedelta(weeks=4)
+            previous_start_date = now - timedelta(weeks=8)
         elif period == 'year':
             start_date = now - timedelta(days=365)
-            previous_start_date = now - timedelta(days=730)  # Approximate previous year as 730 days
+            previous_start_date = now - timedelta(days=730)
         elif period == 'all':
             start_date = None
             previous_start_date = None
         else:
             return None, None
 
-        # Filter transactions based on the start_date and user being the sender or receiver and type (debit card)
         if start_date:
             current_transactions = Transaction.objects.filter(
                 created_at__gte=start_date,
@@ -587,7 +543,7 @@ def debit_card_transaction_sum_for_user(request, period):
             ).filter(
                 (Q(sender_id=user_id) | Q(receiver_id=user_id))
             )
-            previous_transactions = Transaction.objects.none()  # No previous data if period is 'all'
+            previous_transactions = Transaction.objects.none()
 
         current_sum = current_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
         previous_sum = previous_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
@@ -602,7 +558,6 @@ def debit_card_transaction_sum_for_user(request, period):
             "message": "Invalid time period. Choose from 'day', 'week', 'month', 'year', 'all'."
         }, status=400)
 
-    # Calculate growth percentage
     if previous_sum == 0:
         growth_percentage = 0 if current_sum == 0 else 100
     else:
@@ -634,18 +589,17 @@ def credit_card_transaction_count_for_user(request, period):
             start_date = now - timedelta(weeks=1)
             previous_start_date = now - timedelta(weeks=2)
         elif period == 'month':
-            start_date = now - timedelta(weeks=4)  # Approximate month as 4 weeks
-            previous_start_date = now - timedelta(weeks=8)  # Approximate previous month as 8 weeks
+            start_date = now - timedelta(weeks=4)
+            previous_start_date = now - timedelta(weeks=8)
         elif period == 'year':
             start_date = now - timedelta(days=365)
-            previous_start_date = now - timedelta(days=730)  # Approximate previous year as 730 days
+            previous_start_date = now - timedelta(days=730)
         elif period == 'all':
             start_date = None
             previous_start_date = None
         else:
             return None, None
 
-        # Filter transactions based on the start_date and type (credit card) where user is sender or receiver
         if start_date:
             current_transactions = Transaction.objects.filter(
                 created_at__gte=start_date,
@@ -661,7 +615,7 @@ def credit_card_transaction_count_for_user(request, period):
             current_transactions = Transaction.objects.filter(
                 type=Transaction.TransactionType.CREDIT_CARD
             ).filter(Q(sender_id=user_id) | Q(receiver_id=user_id))
-            previous_transactions = Transaction.objects.none()  # No previous data if period is 'all'
+            previous_transactions = Transaction.objects.none()
 
         current_sum = current_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
         previous_sum = previous_transactions.aggregate(total_amount=Sum('amount')).get('total_amount', 0) or 0
@@ -676,7 +630,6 @@ def credit_card_transaction_count_for_user(request, period):
             "message": "Invalid time period. Choose from 'day', 'week', 'month', 'year', 'all'."
         }, status=400)
 
-    # Calculate growth percentage
     if previous_sum == 0:
         growth_percentage = 0 if current_sum == 0 else 100
     else:
@@ -703,8 +656,8 @@ def credit_card_transaction_summary(request):
 
         return Response({
             'status': True,
-            'x-axis': {i: transaction_sums[i] for i in range(len(transaction_sums))},  # Format x-axis as a dictionary
-            'y-axis': {i: month_names[i] for i in range(len(month_names))},  # Format y-axis as a dictionary
+            'x-axis': {i: transaction_sums[i] for i in range(len(transaction_sums))},
+            'y-axis': {i: month_names[i] for i in range(len(month_names))},
         }, status=status.HTTP_200_OK)
 
     except Exception as e:
@@ -725,8 +678,8 @@ def debit_card_transaction_summary(request):
 
         return Response({
             'status': True,
-            'x-axis': {i: transaction_sums[i] for i in range(len(transaction_sums))},  # Format x-axis as a dictionary
-            'y-axis': {i: month_names[i] for i in range(len(month_names))},  # Format y-axis as a dictionary
+            'x-axis': {i: transaction_sums[i] for i in range(len(transaction_sums))},
+            'y-axis': {i: month_names[i] for i in range(len(month_names))},
         }, status=status.HTTP_200_OK)
 
     except Exception as e:
@@ -797,19 +750,16 @@ def rollback_statistics(request, period):
         current_start, previous_start = get_time_range(period)
         now = timezone.now()
 
-        # Get the sum of the rolled-back transactions for the current period
         current_period_rollbacks = Transaction.objects.filter(
             is_rolled_back=True, 
             created_at__range=(current_start, now)
         ).aggregate(total_amount=Sum('amount'))['total_amount'] or 0
 
-        # Get the sum of the rolled-back transactions for the previous period
         previous_period_rollbacks = Transaction.objects.filter(
             is_rolled_back=True, 
             created_at__range=(previous_start, current_start)
         ).aggregate(total_amount=Sum('amount'))['total_amount'] or 0
 
-        # Calculate growth percentage
         if previous_period_rollbacks == 0:
             growth_percentage = 100.0 if current_period_rollbacks > 0 else 0.0
         else:

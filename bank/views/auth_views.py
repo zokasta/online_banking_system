@@ -43,7 +43,6 @@ def signup(request):
 
         upi_id = f"{email_username}@zokasta"
 
-        # Additional account creation logic
         account_number = int(user.phone)
         debit_card = generate_card_number()
         expiration_date = generate_expiration_date()
@@ -60,13 +59,15 @@ def signup(request):
         )
         account_serializer = AccountSerializer(account)
 
-        # Generate OTP
         otp = generate_otp()
         user.otp = otp
         user.save()
-
-        # Send OTP (if needed)
+        # This is for send otp via email 
         # send_otp_email(user.email, otp)
+        
+        # This is for send otp via messages
+        # messagehandler=MessageHandler(user.phone,otp).send_otp_via_message()
+        
 
         return Response({
             'status': True,
@@ -76,7 +77,6 @@ def signup(request):
             'account': account_serializer.data
         })
 
-    # Handle errors
     errors = {f"{field} field is required": next(iter(errors)) for field, errors in serializer.errors.items()}
     return Response({
         'status': False,
@@ -110,7 +110,7 @@ def login(request):
     user.save()
 
     # messagehandler=MessageHandler(user.phone,otp).send_otp_via_message()
-    # send_otp_email(user.email, otp)
+    send_otp_email(user.email, otp)
 
     return Response({
         "status": True,
@@ -123,34 +123,28 @@ def login(request):
 @api_view(['POST'])
 def adminLogin(request):
     user = get_object_or_404(User, username=request.data['username'])
-    # account = get_object_or_404(Account, user_id=user.id)
-    # Check if the user is an admin
     if not user.is_superuser or not user.type == 'admin':
         return Response({
             "status": False,
             "message": "Access denied: not an admin"
         })
 
-    # Check the password
     if not user.check_password(request.data['password']):
         return Response({
             "status": False,
             "message": "Username or password is wrong"
         })
 
-    # Generate and save OTP
     otp = generate_otp()
     user.otp = otp
     user.save()
 
-    # Send OTP via email
     # send_otp_email(user.email, otp)
 
     return Response({
         "status": True,
         "message": "OTP has been sent to your email",
         "otp":otp
-        # "account":account
     }, status=status.HTTP_200_OK)
 
 
@@ -161,20 +155,15 @@ def verify_otp(request):
     otp = request.data.get('otp')
 
     if str(user.otp) == otp:
-        # Delete any existing tokens for this user
         Token.objects.filter(user=user).delete()
 
-        # Create a new token for the user
         token = Token.objects.create(user=user)
 
-        # Serialize the user data
         user_serializer = UserSerializer(instance=user)
 
-        # Query and serialize the associated account
         account = get_object_or_404(Account, user=user)
         account_serializer = AccountSerializer(account)
 
-        # Fetch credit card details if any
         credit_card = CreditCard.objects.filter(user_id=user.id).first()
         user.otp = ""
         user.save()
@@ -184,12 +173,10 @@ def verify_otp(request):
             'token': token.key,
             'user': user_serializer.data,
             'account': account_serializer.data,
-            'credit_card': False  # Default to False if no credit card is found
+            'credit_card': False
         }
 
-        # Check if credit_card exists and if its status is "active"
         if credit_card and credit_card.status == "confirm":
-            # Serialize the credit card details
             credit_card_serializer = CreditCardSerializer(credit_card)
             response_data["credit_card"] = True
             response_data["credit_card_data"] = credit_card_serializer.data
@@ -208,12 +195,10 @@ def send_otp_for_forgot_password(request):
     email = request.data.get('email')
     user = get_object_or_404(User, email=email)
 
-    # Generate and save OTP
     otp = generate_otp()
     user.otp = otp
     user.save()
 
-    # Send OTP to user's email
     send_otp_email(user.email, otp)
 
     return Response({
@@ -229,11 +214,9 @@ def verify_otp_for_forgot_password(request):
     otp = request.data.get('otp')
     user = get_object_or_404(User, username=username)
 
-    # Verify OTP
     if user.otp == otp:
-        # Generate unique token
         token = str(uuid.uuid4())
-        user.reset_token = token  # Assuming you have a reset_token field in User model
+        user.reset_token = token
         user.save()
 
         return Response({
@@ -255,10 +238,9 @@ def reset_password(request):
     new_password = request.data.get('password')
     user = get_object_or_404(User, username=username)
 
-    # Verify token
     if user.reset_token == token:
         user.set_password(new_password)
-        user.reset_token = None  # Clear the token after use
+        user.reset_token = None
         user.save()
 
         return Response({

@@ -16,10 +16,8 @@ from ..permissions import IsAdminUserType, IsUserType
 def admin_account_list(request):
     search = request.query_params.get('search', '').strip()
 
-    # Fetch all accounts
     accounts = Account.objects.all()
 
-    # Filter accounts based on search term
     if search:
         accounts = accounts.filter(
             balance__icontains=search) | accounts.filter(
@@ -27,10 +25,8 @@ def admin_account_list(request):
             debit_card__icontains=search) | accounts.filter(
             created_at__icontains=search)
 
-    # Sort accounts by created_at timestamp
     accounts = accounts.order_by('-created_at')
 
-    # Prepare response data
     account_list = []
     for idx, account in enumerate(accounts, start=1):
         account_list.append({
@@ -56,7 +52,6 @@ def admin_account_list(request):
 def admin_account_delete(request, account_id):
     account = get_object_or_404(Account, id=account_id)
 
-    # Delete the account
     account.delete()
 
     return Response({

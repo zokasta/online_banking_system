@@ -14,13 +14,11 @@ from ..serializers import ReportSerializer
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated, IsUserType])
 def create_report(request):
-    # Set the user in the request data
     data = request.data.copy()
     data['user'] = request.user.id
     data['message'] = request.data.get('message')
     # data['custom_name'] = request.user.name
     
-    # Serialize and validate the report data
     serializer = ReportSerializer(data=data)
     if serializer.is_valid():
         serializer.save()  # Save the report
@@ -30,7 +28,6 @@ def create_report(request):
             'data': serializer.data
         })
     else:
-        # If validation fails, return errors with status and message
         return Response({
             'status': False,
             'message': 'Failed to create report. Please check the provided data.',
@@ -42,8 +39,8 @@ def create_report(request):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated, IsAdminUserType])
 def get_reports(request):
-    reports = Report.objects.filter(user=request.user)  # Filter reports by the logged-in user
-    serializer = ReportSerializer(reports, many=True)  # Serialize the list of reports
+    reports = Report.objects.filter(user=request.user)
+    serializer = ReportSerializer(reports, many=True)
     return Response({
         'status': True,
         'message': 'Reports retrieved successfully.',

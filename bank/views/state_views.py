@@ -70,7 +70,7 @@ def cities_by_state(request, state_id):
 
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated, IsAdminUserType])  # Restrict this API to only admin users
+@permission_classes([IsAuthenticated, IsAdminUserType]) 
 def create_state(request):
     try:
         # Deserialize the request data
@@ -104,13 +104,10 @@ def create_state(request):
 @permission_classes([IsAuthenticated, IsAdminUserType])
 def edit_state(request, id):
     try:
-        # Fetch the state object based on the provided ID
         state = State.objects.get(id=id)
 
-        # Deserialize the request data and apply partial updates
         serializer = StateSerializer(state, data=request.data, partial=True)
 
-        # Validate the data and save the updated state
         if serializer.is_valid():
             serializer.save()
             return Response({
@@ -125,14 +122,12 @@ def edit_state(request, id):
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
 
-    # If the state does not exist, return an error response
     except State.DoesNotExist:
         return Response({
             "status": False,
             "message": "State not found."
         }, status=status.HTTP_404_NOT_FOUND)
 
-    # Handle any other exceptions
     except Exception as e:
         return Response({
             "status": False,
@@ -146,24 +141,20 @@ def edit_state(request, id):
 @permission_classes([IsAuthenticated, IsAdminUserType])
 def delete_state(request, id):
     try:
-        # Fetch the state object based on the provided ID
         state = State.objects.get(id=id)
         
-        # Delete the state object
         state.delete()
         return Response({
             "status": True,
             "message": "State deleted successfully."
         }, status=status.HTTP_200_OK)
 
-    # If the state does not exist, return an error response
     except State.DoesNotExist:
         return Response({
             "status": False,
             "message": "State not found."
         }, status=status.HTTP_404_NOT_FOUND)
 
-    # Handle any other exceptions
     except Exception as e:
         return Response({
             "status": False,

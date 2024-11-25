@@ -8,7 +8,7 @@ from dateutil.relativedelta import relativedelta
 
 
 def digits_of(n):
-    return [int(d) for d in str(n)]  # Ensure n is a string or integer
+    return [int(d) for d in str(n)]
 
 
 def get_time_range(period):
@@ -18,7 +18,6 @@ def get_time_range(period):
         current_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         previous_start = current_start - timezone.timedelta(days=1)
     elif period == 'week':
-        # Calculate the start of the current week
         current_start = now - timezone.timedelta(days=now.weekday())
         current_start = current_start.replace(hour=0, minute=0, second=0, microsecond=0)
         previous_start = current_start - timezone.timedelta(weeks=1)
@@ -60,7 +59,6 @@ def get_six_month_transaction():
     transaction_sums = []
 
     for start, end in months:
-        # Ensure both start and end are timezone-aware if necessary
         total = Transaction.objects.filter(created_at__range=(start, end)).aggregate(Sum('amount'))['amount__sum'] or 0
         transaction_sums.append(total)
 
@@ -68,14 +66,13 @@ def get_six_month_transaction():
 
 
 def get_six_month_credit_card_transactions_for_admin(type):
-    month_names, months = get_last_six_months()  # Retrieve last 6 months' start and end dates
+    month_names, months = get_last_six_months()
     transaction_sums = []
 
     for start, end in months:
-        # Filter only transactions of type 'CREDIT_CARD' within the date range
         total = Transaction.objects.filter(
             created_at__range=(start, end),
-            type=type # Filter by credit card type
+            type=type
         ).aggregate(Sum('amount'))['amount__sum'] or 0
         transaction_sums.append(total)
 
@@ -125,8 +122,6 @@ def get_six_month_debit_card_transactions(user):
             transaction_sums.append(transactions)
     return month_names, transaction_sums
 
- # Import your models
-
 
 def generate_card_number(prefix="4", length=16):
     """
@@ -162,38 +157,31 @@ def generate_card_number(prefix="4", length=16):
     card_number = None
     
     while not card_number or card_number_exists(card_number):
-        # Generate a potential card number
         card_number = [int(x) for x in prefix]
 
-        # Generate random digits to fill the rest of the card number (except the last one)
         while len(card_number) < (length - 1):
             card_number.append(random.randint(0, 9))
 
-        # Calculate the checksum digit using the Luhn algorithm
         card_number_as_string = ''.join(map(str, card_number))
         checksum_digit = luhn_checksum(card_number_as_string + '0')
         if checksum_digit != 0:
             checksum_digit = 10 - checksum_digit
         
-        # Append the checksum to the card number
         card_number.append(checksum_digit)
         
-        # Join the card number list into a single string
         card_number = ''.join(map(str, card_number))
     
-    # Return a unique card number
     return card_number
 
 
 def get_six_month_rolled_back_transactions():
-    month_names, months = get_last_six_months()  # Retrieve last 6 months' start and end dates
+    month_names, months = get_last_six_months()
     transaction_sums = []
 
     for start, end in months:
-        # Filter only rolled-back transactions within the date range
         total = Transaction.objects.filter(
             created_at__range=(start, end),
-            is_rolled_back=True  # Filter by rolled-back transactions
+            is_rolled_back=True
         ).aggregate(Sum('amount'))['amount__sum'] or 0
         transaction_sums.append(total)
 

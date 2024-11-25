@@ -41,10 +41,8 @@ def get_user_by_id(request, user_id):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated, IsAdminUserType])
 def get_all_users(request):
-    # Get the search query from request parameters
     search_query = request.query_params.get('search', '')
 
-    # Build the query for case-insensitive search across multiple fields
     search_filter = Q()
     if search_query:
         search_filter |= Q(name__icontains=search_query)
@@ -54,17 +52,14 @@ def get_all_users(request):
         search_filter |= Q(pan_card__icontains=search_query)
         search_filter |= Q(aadhar_card__icontains=search_query)
 
-    # Apply the search filter to the queryset
     users = User.objects.filter(search_filter)
     
-    # Serialize users
     serializer = UserSerializer(users, many=True)
     
-    # Add index and ID to each user's data
     user_data_with_index = []
     for index, user_data in enumerate(serializer.data, start=1):
         user_data['index'] = index
-        user_data['id'] = user_data.get('id')  # Ensure the 'id' field is included
+        user_data['id'] = user_data.get('id')
         user_data_with_index.append(user_data)
     
     return Response({
@@ -104,16 +99,12 @@ def user_list(request):
     if request.user.type != 'admin':
         return Response({'error': 'You do not have permission to access this resource.'}, status=status.HTTP_403_FORBIDDEN)
     
-    # Filter users to only include those with type='user'
     users = User.objects.filter(type='user')
     
-    # Process each user to add status based on is_ban and index
     user_data = []
     for index, user in enumerate(users, start=1):
         serialized_user = UserSerializer(user).data
-        # Add a custom status based on is_ban field
         serialized_user['status'] = 'frozen' if user.is_ban else 'normal'
-        # Add index to the user data
         serialized_user['index'] = index
         user_data.append(serialized_user)
     
@@ -127,7 +118,6 @@ def user_list(request):
 @permission_classes([IsAuthenticated])
 def delete_user(request, user_id):
     try:
-        # Find the user by ID
         user = User.objects.get(id=user_id)
         user.delete()
         return Response({'status': True, 'message': 'User deleted successfully.'})
@@ -140,15 +130,11 @@ def delete_user(request, user_id):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def user_update_by_admin(request, user_id):
-    # if request.user.type != 'admin':
-    #     return Response({'error': 'You do not have permission to access this resource.'})
     user = get_object_or_404(User, id=user_id)
     
-    # Only allow updating of specific fields
     allowed_fields = {'name', 'phone', 'email'}
     data = {field: value for field, value in request.data.items() if field in allowed_fields}
 
-    # Update the user's information
     serializer = UserSerializer(user, data=data, partial=True)
     
     if serializer.is_valid():
@@ -170,10 +156,8 @@ def user_update_by_admin(request, user_id):
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 def toggle_user_ban(request, user_id):
-    # Get the user by ID or return 404 if not found
     user = get_object_or_404(User, id=user_id)
 
-    # Check for 'is_ban' field in the request data
     is_ban = request.data.get('status', 'none')
     if is_ban == 'none':
         is_ban = False
@@ -181,7 +165,6 @@ def toggle_user_ban(request, user_id):
         is_ban = True
 
     if is_ban is not None:
-        # Update the user's is_ban status
         user.is_ban = is_ban
         user.save()
 
