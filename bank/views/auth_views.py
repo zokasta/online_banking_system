@@ -11,6 +11,7 @@ from rest_framework import status
 from ..Massage import MessageHandler
 from .functions import generate_expiration_date, generate_cvv
 from .functions import generate_card_number
+from datetime import datetime
 
 
 @api_view(['POST'])
@@ -20,6 +21,7 @@ def signup(request):
     
     pan_card = request.data.get('pan_card', '').strip().upper()
     aadhar_card = request.data.get('aadhar_card', '').strip()
+    dob = request.data.get('dob', '').strip()  # Date of birth in YYYY-MM-DD format
 
     if not re.match(pan_regex, pan_card):
         return Response({
@@ -31,6 +33,21 @@ def signup(request):
         return Response({
             'status': False,
             'message': 'Invalid Aadhar card number. Please enter a valid 12-digit Aadhar number.'
+        })
+    
+    try:
+        dob_date = datetime.strptime(dob, '%Y-%m-%d')
+        today = datetime.now()
+        age = (today - dob_date).days // 365
+        if age < 18:
+            return Response({
+                'status': False,
+                'message': 'You must be at least 18 years old to register.'
+            })
+    except ValueError:
+        return Response({
+            'status': False,
+            'message': 'Invalid date format. Please use YYYY-MM-DD.'
         })
 
     serializer = UserSerializer(data=request.data)
@@ -62,13 +79,13 @@ def signup(request):
         otp = generate_otp()
         user.otp = otp
         user.save()
-        # This is for send otp via email 
-        # send_otp_email(user.email, otp)
-        
-        # This is for send otp via messages
-        # messagehandler=MessageHandler(user.phone,otp).send_otp_via_message()
-        
 
+        # This is for sending OTP via email 
+        send_otp_email(user.email, otp)
+        
+        # Uncomment for sending OTP via SMS
+        # messagehandler=MessageHandler(user.phone, otp).send_otp_via_message()
+        
         return Response({
             'status': True,
             'otp': otp,
@@ -82,8 +99,7 @@ def signup(request):
         'status': False,
         'message': list(errors.values())[0]
     }, status=status.HTTP_200_OK)
-
-
+    
 
 @api_view(['POST'])
 def login(request):

@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'bank',
     'corsheaders'
+    
 ]
 
 MIDDLEWARE = [
@@ -84,6 +85,7 @@ WSGI_APPLICATION = 'online_banking_system.wsgi.application'
 #         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
