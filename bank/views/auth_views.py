@@ -81,7 +81,7 @@ def signup(request):
         user.save()
 
         # This is for sending OTP via email 
-        send_otp_email(user.email, otp)
+        # send_otp_email(user.email, otp)
         
         # Uncomment for sending OTP via SMS
         # messagehandler=MessageHandler(user.phone, otp).send_otp_via_message()
@@ -126,7 +126,7 @@ def login(request):
     user.save()
 
     # messagehandler=MessageHandler(user.phone,otp).send_otp_via_message()
-    send_otp_email(user.email, otp)
+    # send_otp_email(user.email, otp)
 
     return Response({
         "status": True,
@@ -215,7 +215,7 @@ def send_otp_for_forgot_password(request):
     user.otp = otp
     user.save()
 
-    send_otp_email(user.email, otp)
+    # send_otp_email(user.email, otp)
 
     return Response({
         "status": True,
