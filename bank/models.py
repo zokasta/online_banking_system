@@ -166,6 +166,7 @@ class CreditCard(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
+
     def __str__(self):
         return f'Credit Card {self.card_number} for User {self.user.email}'
 
